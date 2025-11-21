@@ -49,10 +49,12 @@ python server.py
 
 ### 2. 언리얼 엔진 설정
 
-1. 언리얼 엔진 5 프로젝트 생성
+1. 언리얼 엔진 5.7 프로젝트 생성
 2. `Plugins/NLPPCG` 폴더를 프로젝트의 `Plugins` 디렉토리에 복사
 3. 프로젝트를 빌드 (.uproject 우클릭 -> Generate Visual Studio project files)
 4. 언리얼 에디터에서 플러그인 활성화 (Edit -> Plugins -> "NLP PCG Forest Generator" 검색)
+
+**⚠️ UE5.7 사용자**: PCG Graph 에디터에서 Static Mesh Spawner 노드의 메시를 수동으로 설정해야 합니다. 자세한 내용은 [UE5.7 호환성 가이드](UE5.7_COMPATIBILITY.md)를 참조하세요.
 
 ### 3. 레벨에서 사용하기
 
