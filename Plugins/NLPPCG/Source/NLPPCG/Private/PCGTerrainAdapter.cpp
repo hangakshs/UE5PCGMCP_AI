@@ -2,6 +2,7 @@
 
 #include "PCGTerrainAdapter.h"
 #include "PCGContext.h"
+#include "PCGComponent.h"
 #include "Data/PCGPointData.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
