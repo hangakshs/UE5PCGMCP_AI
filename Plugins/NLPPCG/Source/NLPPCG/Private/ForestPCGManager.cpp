@@ -23,8 +23,8 @@ AForestPCGManager::AForestPCGManager()
 	RootComponent = SceneRoot;
 
 	// PCG 컴포넌트 생성 및 설정
+	// Note: PCGComponent는 ActorComponent이므로 SetupAttachment 불가
 	PCGComponent = CreateDefaultSubobject<UPCGComponent>(TEXT("PCGComponent"));
-	PCGComponent->SetupAttachment(RootComponent);
 
 	// PCG Component 기본 설정
 	if (PCGComponent)
