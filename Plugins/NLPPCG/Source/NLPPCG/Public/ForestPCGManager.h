@@ -109,7 +109,5 @@ private:
 	void SetupPCGGraph(const FPCGForestParameters& Parameters);
 	void LoadDefaultTreeMesh();
 	void InitializeMCPClient();
-	void InitializeDefaultTreeMeshes();
-	UStaticMesh* GetTreeMeshForType(const FString& TreeType);
 	bool SavePCGGraphAsAsset(UPCGGraph* Graph, const FString& AssetName);
 };

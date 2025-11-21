@@ -56,17 +56,17 @@ python server.py
 
 **⚠️ UE5.7 사용자**: PCG Graph 에디터에서 Static Mesh Spawner 노드의 메시를 수동으로 설정해야 합니다. 자세한 내용은 [UE5.7 호환성 가이드](UE5.7_COMPATIBILITY.md)를 참조하세요.
 
-**✨ NEW! 자동 초기화 시스템**: 레벨을 열기만 하면 자동으로 MCPClient와 ForestPCGManager가 생성되고 연결됩니다! [자동 초기화 가이드](Plugins/NLPPCG/AUTO_INITIALIZATION_GUIDE.md)를 참조하세요.
+**✨ NEW! 자동 초기화**: ForestPCGManager를 레벨에 배치하면 자동으로 MCPClient가 생성되고 연결됩니다! [빠른 시작 가이드](Plugins/NLPPCG/QUICK_START.md)를 참조하세요.
 
-**✨ 자동 설정**: ForestPCGManager가 자동으로 배치되고 나무 메시가 등록됩니다! [자동 설정 가이드](AUTO_SETUP_GUIDE.md)를 참조하세요.
+**✨ 자동 설정**: 나무 메시가 자동으로 등록되며 에디터에서 수정 가능합니다! [자동 설정 가이드](AUTO_SETUP_GUIDE.md)를 참조하세요.
 
 ### 3. 레벨에서 사용하기
 
-**⚡ 가장 쉬운 방법 (자동 초기화):**
-1. 레벨 열기
+**⚡ 가장 쉬운 방법 (추천):**
+1. **Place Actors** (Shift + 1) → **NLPPCG** → **ForestPCGManager**를 레벨에 드래그
 2. 로그에서 `=== NLPPCG System Ready ===` 메시지 확인
-3. 블루프린트 또는 Python MCP 서버에서 숲 생성 명령 실행
-4. 완료! 아무 설정 없이 바로 작동합니다!
+3. 커서 또는 블루프린트에서 숲 생성 명령 실행
+4. 완료! MCPClient가 자동으로 생성되고 연결됩니다!
 
 #### 방법 1: 블루프린트 (자동 배치 - 권장)
 

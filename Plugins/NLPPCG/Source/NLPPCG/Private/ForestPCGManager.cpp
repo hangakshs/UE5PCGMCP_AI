@@ -338,12 +338,6 @@ bool AForestPCGManager::SavePCGGraphAsAsset()
 
 void AForestPCGManager::InitializeMCPClient()
 {
-	// 이미 MCP Client가 있고 바인딩되어 있으면 스킵
-	if (MCPClient && MCPClient->OnForestGenerated.IsBoundToObject(this))
-	{
-		return;
-	}
-
 	// 자동 생성 플래그가 꺼져 있으면 스킵
 	if (!bAutoCreateMCPClient)
 	{
@@ -390,9 +384,13 @@ void AForestPCGManager::InitializeMCPClient()
 		}
 	}
 
-	// 델리게이트 바인딩 (아직 안 되어 있으면)
-	if (MCPClient && !MCPClient->OnForestGenerated.IsBoundToObject(this))
+	// 델리게이트 바인딩 (중복 방지를 위해 기존 바인딩 제거 후 추가)
+	if (MCPClient)
 	{
+		// 기존 바인딩 제거
+		MCPClient->OnForestGenerated.RemoveAll(this);
+
+		// 새로 바인딩
 		MCPClient->OnForestGenerated.AddDynamic(this, &AForestPCGManager::OnForestParametersReceived);
 		UE_LOG(LogTemp, Warning, TEXT("ForestPCGManager: MCP Client bound to Forest Manager"));
 		UE_LOG(LogTemp, Warning, TEXT("=== NLPPCG System Ready ==="));
