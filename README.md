@@ -45,6 +45,8 @@ pip install -r requirements.txt
 python server.py
 ```
 
+**MCP 클라이언트 연동**: Claude Desktop이나 Cursor에서 MCP 서버를 사용하려면 [MCP 설정 가이드](MCP_SETUP.md)를 참조하세요.
+
 ### 2. 언리얼 엔진 설정
 
 1. 언리얼 엔진 5 프로젝트 생성
@@ -222,14 +224,39 @@ self.tree_types = {
 - **MCPClient.h/cpp**: MCP 통신 클라이언트 (Plugins/NLPPCG/Source/NLPPCG)
 - **ForestPCGManager.h/cpp**: 숲 관리 액터 (Plugins/NLPPCG/Source/NLPPCG)
 
-## 🔮 향후 개선 사항
+## 🔮 고급 기능 (구현 완료)
 
-- [ ] LLM 통합 (GPT/Claude)으로 더 자연스러운 NLP
-- [ ] 다양한 나무 종에 따른 메시 자동 선택
-- [ ] 지형 데이터 기반 배치 (경사, 고도)
-- [ ] 바이옴 시스템 (침엽수림, 활엽수림, 혼합림)
+✅ **구현된 기능** ([상세 가이드](ADVANCED_FEATURES.md))
+
+- [x] **LLM 통합 (Claude API)** - 감성적 표현과 복잡한 자연어 처리
+  - "아름다운 가을 숲", "신비로운 자작나무 숲" 등 고급 명령 지원
+  - 계절, 분위기 기반 자동 파라미터 생성
+  - [llm_handler.py](MCPServer/llm_handler.py)
+
+- [x] **나무 메시 자동 선택** - TreeMeshLibrary 시스템
+  - 나무 종류별 메시 자동 매핑
+  - 계절별 메시 변종 지원
+  - 가중치 기반 랜덤 선택
+  - [TreeMeshLibrary.h/cpp](Plugins/NLPPCG/Source/NLPPCG/Public/TreeMeshLibrary.h)
+
+- [x] **지형 기반 배치** - 경사, 고도 분석
+  - 경사 필터링 (0-45도 범위 설정 가능)
+  - 경사에 따른 자동 밀도/스케일 조정
+  - 지형 법선에 나무 정렬
+  - [PCGTerrainAdapter.h/cpp](Plugins/NLPPCG/Source/NLPPCG/Public/PCGTerrainAdapter.h)
+
+- [x] **바이옴 시스템** - 실제 생태계 모방
+  - 침엽수림, 활엽수림, 혼합림, 타이가 등 프리셋
+  - 층위 구조 (교목층, 아교목층, 관목층)
+  - 기후 조건 기반 바이옴 자동 선택
+  - [BiomeSystem.h/cpp](Plugins/NLPPCG/Source/NLPPCG/Public/BiomeSystem.h)
+
+📋 **향후 개선 사항**
+
 - [ ] 시즌/날씨에 따른 동적 변화
 - [ ] 멀티플레이어 동기화
+- [ ] 동물 서식지 통합
+- [ ] 불 시뮬레이션 및 재생 시스템
 
 ## 📄 라이선스
 

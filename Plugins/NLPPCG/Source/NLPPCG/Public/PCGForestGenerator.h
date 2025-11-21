@@ -72,9 +72,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (PCG_Overridable))
 	FVector BoundsSize = FVector(7071.0f, 7071.0f, 1000.0f); // 50m x 50m default
 
-	/** 랜덤 시드 */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Settings, meta = (PCG_Overridable))
-	int32 Seed = 42;
+	// Note: Seed는 부모 클래스 UPCGSettings에 이미 정의되어 있습니다
 };
 
 /**
