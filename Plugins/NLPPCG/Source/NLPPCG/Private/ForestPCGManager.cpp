@@ -315,9 +315,14 @@ bool AForestPCGManager::SavePCGGraphAsAsset()
 	// 에셋 레지스트리에 알림
 	FAssetRegistryModule::AssetCreated(NewGraph);
 
-	// 저장
+	// 저장 (UE5.7 API)
 	FString PackageFileName = FPackageName::LongPackageNameToFilename(PackagePath, FPackageName::GetAssetPackageExtension());
-	bool bSaved = UPackage::SavePackage(Package, NewGraph, RF_Public | RF_Standalone, *PackageFileName);
+
+	FSavePackageArgs SaveArgs;
+	SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
+	SaveArgs.SaveFlags = SAVE_NoError;
+
+	bool bSaved = UPackage::SavePackage(Package, NewGraph, *PackageFileName, SaveArgs);
 
 	if (bSaved)
 	{
