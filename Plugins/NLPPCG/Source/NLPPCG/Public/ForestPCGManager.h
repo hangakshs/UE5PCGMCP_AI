@@ -30,8 +30,28 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MCP")
 	AMCPClient* MCPClient;
 
-	/** 나무 메시 (임시로 큐브 메시 사용) */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Forest")
+	/**
+	 * 나무 종류별 메시 매핑 (에디터에서 수정 가능)
+	 * 키: 나무 타입 (pine, oak, birch, maple, generic_tree)
+	 * 값: Static Mesh 에셋 경로
+	 */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Forest|Tree Meshes", meta = (DisplayName = "Tree Type Meshes"))
+	TMap<FString, TSoftObjectPtr<UStaticMesh>> TreeMeshes;
+
+	/** PCG 그래프 에셋 (자동 생성되거나 수동 할당) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PCG", meta = (DisplayName = "PCG Graph Asset"))
+	UPCGGraph* PCGGraphAsset;
+
+	/** PCG 그래프를 에셋으로 저장할지 여부 */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PCG", meta = (DisplayName = "Save PCG Graph as Asset"))
+	bool bSavePCGGraphAsAsset = true;
+
+	/** PCG 그래프 에셋 저장 경로 */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PCG", meta = (DisplayName = "Graph Asset Path", EditCondition = "bSavePCGGraphAsAsset"))
+	FString GraphAssetPath = TEXT("/Game/PCG/Graphs/");
+
+	/** 나무 메시 (하위 호환성을 위해 유지, TreeMeshes 사용 권장) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Forest|Legacy", meta = (DisplayName = "Default Tree Mesh (Legacy)"))
 	UStaticMesh* TreeMesh;
 
 	/** 자동으로 MCP 클라이언트 생성 */
@@ -56,6 +76,27 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Forest")
 	void GenerateForestFromParameters(const FPCGForestParameters& Parameters);
+
+	/**
+	 * 나무 타입에 맞는 메시 가져오기
+	 * @param TreeType 나무 타입 (pine, oak, birch, maple, generic_tree)
+	 * @return Static Mesh (없으면 기본 메시 반환)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Forest")
+	UStaticMesh* GetTreeMeshForType(const FString& TreeType);
+
+	/**
+	 * PCG 그래프를 에셋으로 저장
+	 * @return 저장 성공 여부
+	 */
+	UFUNCTION(BlueprintCallable, Category = "PCG", meta = (DisplayName = "Save PCG Graph as Asset"))
+	bool SavePCGGraphAsAsset();
+
+	/**
+	 * 기본 나무 메시 맵 초기화 (에디터에서 호출 가능)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Forest", meta = (DisplayName = "Initialize Default Tree Meshes"))
+	void InitializeDefaultTreeMeshes();
 
 protected:
 	virtual void BeginPlay() override;

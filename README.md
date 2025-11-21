@@ -56,29 +56,45 @@ python server.py
 
 **⚠️ UE5.7 사용자**: PCG Graph 에디터에서 Static Mesh Spawner 노드의 메시를 수동으로 설정해야 합니다. 자세한 내용은 [UE5.7 호환성 가이드](UE5.7_COMPATIBILITY.md)를 참조하세요.
 
+**✨ 자동 설정**: ForestPCGManager가 자동으로 배치되고 나무 메시가 등록됩니다! [자동 설정 가이드](AUTO_SETUP_GUIDE.md)를 참조하세요.
+
 ### 3. 레벨에서 사용하기
 
-#### 방법 1: 블루프린트 사용
+#### 방법 1: 블루프린트 (자동 배치 - 권장)
+
+ForestPCGManager가 없으면 자동으로 생성됩니다!
+
+```
+Event BeginPlay
+  |
+  v
+Generate Forest From NLP (NLPPCG Library)
+  Command: "밀집된 소나무 숲 만들어줘"
+  Spawn Location: (0, 0, 0)
+```
+
+#### 방법 2: 수동 배치
 
 1. **ForestPCGManager 액터 배치**
-   - Content Browser에서 `ForestPCGManager` 검색
+   - Place Actors → NLPPCG → ForestPCGManager
    - 레벨에 드래그 앤 드롭
+   - 나무 메시 자동 등록됨 (기본값: Cube)
 
 2. **자연어 명령 실행**
    - 블루프린트에서 `GenerateForestFromNLP` 노드 호출
    - Command 입력: "밀집된 소나무 숲 만들어줘"
 
-#### 방법 2: C++ 사용
+#### 방법 3: C++ (자동 배치)
 
 ```cpp
-// ForestPCGManager 스폰
-AForestPCGManager* ForestManager = GetWorld()->SpawnActor<AForestPCGManager>();
+#include "ForestPCGManagerLibrary.h"
 
-// 자연어로 숲 생성
-ForestManager->GenerateForestFromNLP(TEXT("성긴 참나무 숲을 500평방미터에 생성해줘"));
-
-// 숲 제거
-ForestManager->ClearForest();
+// 자동으로 ForestPCGManager 생성 + 숲 생성
+UForestPCGManagerLibrary::GenerateForestFromNLP(
+    this,
+    TEXT("성긴 참나무 숲을 500평방미터에 생성해줘"),
+    FVector(0, 0, 0)
+);
 ```
 
 ## 💬 지원되는 자연어 명령
