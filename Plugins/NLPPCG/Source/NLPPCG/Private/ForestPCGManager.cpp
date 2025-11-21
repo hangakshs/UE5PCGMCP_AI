@@ -13,7 +13,7 @@ AForestPCGManager::AForestPCGManager()
 
 	// PCG 컴포넌트 생성
 	PCGComponent = CreateDefaultSubobject<UPCGComponent>(TEXT("PCGComponent"));
-	RootComponent = PCGComponent;
+	RootComponent = Cast<USceneComponent>(PCGComponent);
 
 	// 기본 메시 로드
 	LoadDefaultTreeMesh();
@@ -111,7 +111,12 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 	}
 
 	// 기존 노드 제거
-	PCGGraph->RemoveAllNodes();
+	const TArray<UPCGNode*>& Nodes = PCGGraph->GetNodes();
+	if (Nodes.Num() > 0)
+	{
+		TArray<UPCGNode*> NodesToRemove = Nodes;
+		PCGGraph->RemoveNodes(NodesToRemove);
+	}
 
 	// 1. Forest Generator 노드 생성
 	UPCGForestGeneratorSettings* ForestSettings = NewObject<UPCGForestGeneratorSettings>(PCGGraph);
