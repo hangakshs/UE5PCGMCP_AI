@@ -18,19 +18,18 @@ AForestPCGManager::AForestPCGManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Root Scene Component 생성
-	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
-	RootComponent = SceneRoot;
-
-	// PCG 컴포넌트 생성 및 설정
-	// Note: PCGComponent는 ActorComponent이므로 SetupAttachment 불가
+	// PCG 컴포넌트를 루트로 생성 (UPCGComponent는 USceneComponent를 상속)
 	PCGComponent = CreateDefaultSubobject<UPCGComponent>(TEXT("PCGComponent"));
+	RootComponent = PCGComponent;
 
 	// PCG Component 기본 설정
 	if (PCGComponent)
 	{
 		PCGComponent->bActivated = true;
 		PCGComponent->GenerationTrigger = EPCGComponentGenerationTrigger::GenerateOnDemand;
+
+		// 초기 bounds 설정 (큰 영역으로 설정하여 등록 실패 방지)
+		PCGComponent->SetRelativeScale3D(FVector(100.0f, 100.0f, 10.0f));
 	}
 
 	// 기본 메시 로드 (하위 호환성)
