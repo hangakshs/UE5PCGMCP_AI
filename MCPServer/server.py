@@ -9,12 +9,14 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from mcp.server.stdio import stdio_server
 from nlp_handler import ForestNLPHandler
+from ue5_connector import UE5Connector
 
 
 class PCGForestMCPServer:
     def __init__(self):
         self.app = Server("pcg-forest-server")
         self.nlp_handler = ForestNLPHandler()
+        self.ue5_connector = UE5Connector()
         self.setup_handlers()
 
     def setup_handlers(self):
@@ -93,14 +95,22 @@ class PCGForestMCPServer:
             # 사용자 응답 생성
             response_text = self.nlp_handler.generate_response(params)
 
-            # 언리얼 엔진에 전달할 JSON 생성
-            ue_command = {
-                "action": "create_forest",
-                "parameters": params
-            }
+            # UE5에서 직접 실행
+            execution_result = self.ue5_connector.execute_forest_command(params)
 
-            result_text = f"{response_text}\n\n--- Unreal Engine Command ---\n"
-            result_text += json.dumps(ue_command, indent=2, ensure_ascii=False)
+            # 결과 텍스트 생성
+            result_text = f"📍 명령: {command}\n\n"
+            result_text += f"✅ 파싱 결과:\n{response_text}\n\n"
+
+            if execution_result.get("success"):
+                result_text += f"🎮 UE5 실행 결과: ✅ 성공\n"
+                result_text += f"   {execution_result.get('message', '')}\n"
+            else:
+                result_text += f"🎮 UE5 실행 결과: ❌ 실패\n"
+                result_text += f"   오류: {execution_result.get('error', 'Unknown error')}\n"
+
+            result_text += f"\n--- 생성된 파라미터 ---\n"
+            result_text += json.dumps(params, indent=2, ensure_ascii=False)
 
             return [TextContent(
                 type="text",
@@ -115,18 +125,29 @@ class PCGForestMCPServer:
 
     async def handle_clear_forest(self) -> Sequence[TextContent]:
         """숲 제거 명령 처리"""
-        ue_command = {
-            "action": "clear_forest",
-            "parameters": {}
-        }
+        try:
+            # UE5에서 직접 실행
+            execution_result = self.ue5_connector.clear_forest()
 
-        result_text = "모든 PCG 숲을 제거합니다.\n\n--- Unreal Engine Command ---\n"
-        result_text += json.dumps(ue_command, indent=2, ensure_ascii=False)
+            result_text = "🗑️  모든 PCG 숲을 제거합니다.\n\n"
 
-        return [TextContent(
-            type="text",
-            text=result_text
-        )]
+            if execution_result.get("success"):
+                result_text += f"🎮 UE5 실행 결과: ✅ 성공\n"
+                result_text += f"   {execution_result.get('message', '')}\n"
+            else:
+                result_text += f"🎮 UE5 실행 결과: ❌ 실패\n"
+                result_text += f"   오류: {execution_result.get('error', 'Unknown error')}\n"
+
+            return [TextContent(
+                type="text",
+                text=result_text
+            )]
+
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=f"오류 발생: {str(e)}"
+            )]
 
     async def handle_modify_forest(self, arguments: dict) -> Sequence[TextContent]:
         """숲 수정 명령 처리"""
