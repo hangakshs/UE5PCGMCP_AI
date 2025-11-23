@@ -22,6 +22,10 @@ class NLPPCG_API AForestPCGManager : public AActor
 public:
 	AForestPCGManager();
 
+	/** PCG Bounds를 정의하는 Box Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PCG")
+	class UBoxComponent* BoundsComponent;
+
 	/** PCG 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PCG")
 	UPCGComponent* PCGComponent;

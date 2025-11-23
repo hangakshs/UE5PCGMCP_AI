@@ -7,6 +7,7 @@
 #include "Engine/StaticMesh.h"
 #include "UObject/ConstructorHelpers.h"
 #include "EngineUtils.h"
+#include "Components/BoxComponent.h"
 
 #if WITH_EDITOR
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -21,6 +22,14 @@ AForestPCGManager::AForestPCGManager()
 	// Root Scene Component 생성
 	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
+
+	// Box Component 생성 (PCG Bounds용)
+	BoundsComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("PCGBounds"));
+	BoundsComponent->SetupAttachment(RootComponent);
+	// 기본 크기: 100m x 100m x 10m (10000cm x 10000cm x 1000cm)
+	BoundsComponent->SetBoxExtent(FVector(5000.0f, 5000.0f, 500.0f));
+	BoundsComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoundsComponent->SetHiddenInGame(true);
 
 	// PCG 컴포넌트 생성 및 설정
 	// Note: PCGComponent는 ActorComponent이므로 SetupAttachment 불가
@@ -127,6 +136,18 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 		return;
 	}
 
+	// 영역 크기 계산 (AreaSize는 cm² 단위)
+	float SideLength = FMath::Sqrt(Parameters.AreaSize);
+
+	// BoundsComponent 크기 업데이트
+	if (BoundsComponent)
+	{
+		// Extent는 중심에서의 거리이므로 절반
+		float HalfSide = SideLength / 2.0f;
+		BoundsComponent->SetBoxExtent(FVector(HalfSide, HalfSide, 500.0f));
+		UE_LOG(LogTemp, Log, TEXT("Updated BoundsComponent: Extent=(%.1f, %.1f, 500)"), HalfSide, HalfSide);
+	}
+
 	// PCG 그래프 생성 또는 가져오기
 	UPCGGraph* PCGGraph = PCGComponent->GetGraph();
 	if (!PCGGraph)
@@ -146,9 +167,6 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 	// 1. Forest Generator 노드 생성
 	UPCGForestGeneratorSettings* ForestSettings = NewObject<UPCGForestGeneratorSettings>(PCGGraph);
 	ForestSettings->ForestParameters = Parameters;
-
-	// 영역 크기 계산 (AreaSize는 cm² 단위)
-	float SideLength = FMath::Sqrt(Parameters.AreaSize);
 	ForestSettings->BoundsSize = FVector(SideLength, SideLength, 1000.0f);
 
 	UPCGNode* ForestNode = PCGGraph->AddNode(ForestSettings);
