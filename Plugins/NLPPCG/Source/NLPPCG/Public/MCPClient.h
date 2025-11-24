@@ -31,6 +31,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MCP")
 	bool bDebugMode = true;
 
+	/** 파일 기반 통신 사용 (MCP 서버가 stdio 모드일 때) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MCP")
+	bool bUseFileCommunication = true;
+
+	/** 파일 폴링 간격 (초) */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MCP")
+	float FilePollingInterval = 0.5f;
+
 	/** MCP 응답 델리게이트 */
 	UPROPERTY(BlueprintAssignable, Category = "MCP")
 	FOnMCPResponse OnMCPResponse;
@@ -54,9 +62,19 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
 
 private:
 	void HandleHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
 	void ProcessForestCommand(const FString& JsonResponse);
 	FPCGForestParameters ParseForestParameters(TSharedPtr<FJsonObject> ParamsObject);
+
+	// 파일 기반 통신
+	void CheckCommandFile();
+	FString GetProjectIntermediatePath() const;
+	void SendCommandViaFile(const FString& Command);
+
+	// 타이머
+	float TimeSinceLastPoll = 0.0f;
+	FString LastProcessedCommandHash;
 };
