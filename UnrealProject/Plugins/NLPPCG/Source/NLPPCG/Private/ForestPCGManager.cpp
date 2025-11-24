@@ -175,22 +175,25 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 	UPCGStaticMeshSpawnerSettings* SpawnerSettings = NewObject<UPCGStaticMeshSpawnerSettings>(PCGGraph);
 
 	// UE5.7 메시 설정
-	if (TreeMesh)
+	// 참고: MeshSelectorParameters는 Read-Only이므로 직접 설정할 수 없습니다.
+	// PCG Graph를 에셋으로 저장한 후 에디터에서 Static Mesh Spawner 노드의
+	// Mesh Selector Type을 설정하고 메시를 추가해야 합니다.
+
+	if (!TreeMesh)
 	{
-		// UE5.7에서는 MeshSelectorParameters.StaticMeshEntries를 사용
-		FPCGStaticMeshSpawnerEntry MeshEntry;
-		MeshEntry.Weight = 100;  // 가중치
-		MeshEntry.bOverrideCollisionProfile = false;
-		MeshEntry.Mesh = TSoftObjectPtr<UStaticMesh>(TreeMesh);
-
-		SpawnerSettings->MeshSelectorParameters.bUseAttribute = false;
-		SpawnerSettings->MeshSelectorParameters.StaticMeshEntries.Add(MeshEntry);
-
-		UE_LOG(LogTemp, Log, TEXT("Configured Static Mesh Spawner with mesh: %s"), *TreeMesh->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Tree mesh not set! Please configure Static Mesh Spawner manually in PCG Graph editor."));
+		UE_LOG(LogTemp, Warning, TEXT("1. Open the generated PCG Graph asset"));
+		UE_LOG(LogTemp, Warning, TEXT("2. Select the Static Mesh Spawner node"));
+		UE_LOG(LogTemp, Warning, TEXT("3. Set Mesh Selector Type to 'PCGMeshSelectorWeighted'"));
+		UE_LOG(LogTemp, Warning, TEXT("4. Add your tree mesh to Mesh Entries"));
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("Tree mesh not set! Forest generation will fail."));
+		UE_LOG(LogTemp, Warning, TEXT("PCG Graph created. To spawn meshes:"));
+		UE_LOG(LogTemp, Warning, TEXT("1. Open the PCG Graph in the editor"));
+		UE_LOG(LogTemp, Warning, TEXT("2. Select Static Mesh Spawner node"));
+		UE_LOG(LogTemp, Warning, TEXT("3. Configure mesh in Mesh Selector section"));
+		UE_LOG(LogTemp, Warning, TEXT("Default mesh available: %s"), *TreeMesh->GetName());
 	}
 
 	// 스폰 옵션 설정
