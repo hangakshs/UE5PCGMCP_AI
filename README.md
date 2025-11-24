@@ -13,26 +13,70 @@
 
 ```
 UE5PCGMCP_AI/
-├── MCPServer/                 # Python MCP 서버
-│   ├── server.py             # MCP 서버 메인
-│   ├── nlp_handler.py        # 자연어 처리 모듈
-│   ├── requirements.txt      # Python 의존성
-│   └── README.md            # 서버 사용 가이드
 │
-└── Plugins/NLPPCG/           # 언리얼 플러그인
-    ├── NLPPCG.uplugin       # 플러그인 정의
-    ├── Source/NLPPCG/
-    │   ├── Public/
-    │   │   ├── NLPPCGModule.h
-    │   │   ├── PCGForestGenerator.h      # PCG 숲 생성 노드
-    │   │   ├── MCPClient.h                # MCP 클라이언트
-    │   │   └── ForestPCGManager.h         # 숲 관리 Actor
-    │   └── Private/
-    │       ├── NLPPCGModule.cpp
-    │       ├── PCGForestGenerator.cpp
-    │       ├── MCPClient.cpp
-    │       └── ForestPCGManager.cpp
-    └── Resources/
+├── UnrealProject/              # 🎮 언리얼 프로젝트 파일
+│   ├── Config/                # 엔진 설정 파일
+│   │   └── DefaultEngine.ini
+│   ├── Content/               # 에셋 및 Python 스크립트
+│   │   └── Python/           # 언리얼용 Python 스크립트
+│   │       ├── init_unreal.py
+│   │       ├── mcp_command_watcher.py
+│   │       └── start_mcp_watcher.py
+│   └── Plugins/               # 언리얼 플러그인
+│       └── NLPPCG/           # NLP PCG 플러그인
+│           ├── NLPPCG.uplugin
+│           ├── Source/NLPPCG/
+│           │   ├── Public/
+│           │   │   ├── NLPPCGModule.h
+│           │   │   ├── PCGForestGenerator.h
+│           │   │   ├── MCPClient.h
+│           │   │   └── ForestPCGManager.h
+│           │   └── Private/
+│           │       ├── NLPPCGModule.cpp
+│           │       ├── PCGForestGenerator.cpp
+│           │       ├── MCPClient.cpp
+│           │       └── ForestPCGManager.cpp
+│           └── Resources/
+│
+├── MCPServer/                  # 🐍 Python MCP 서버
+│   ├── src/                   # 소스 코드
+│   │   ├── server.py         # MCP 서버 메인
+│   │   ├── nlp_handler.py    # 자연어 처리
+│   │   ├── llm_handler.py    # LLM 통합
+│   │   ├── ue5_connector.py  # UE5 연결
+│   │   └── file_watcher_service.py  # 파일 감시 서비스
+│   ├── scripts/               # 실행 스크립트
+│   │   ├── start_file_watcher.bat
+│   │   └── start_file_watcher.sh
+│   ├── tests/                 # 테스트 파일
+│   │   ├── test_nlp.py
+│   │   └── test_file_communication.py
+│   ├── docs/                  # MCP 서버 문서
+│   │   ├── AUTO_START_GUIDE.md
+│   │   ├── README_FILE_WATCHER.md
+│   │   └── README.md
+│   └── requirements.txt       # Python 의존성
+│
+├── docs/                       # 📚 프로젝트 문서
+│   ├── ADVANCED_FEATURES.md   # 고급 기능
+│   ├── ARCHITECTURE.md        # 아키텍처
+│   ├── AUTO_SETUP_GUIDE.md    # 자동 설정
+│   ├── MCP_INTEGRATION_GUIDE.md
+│   ├── MCP_SETUP.md
+│   ├── QUICK_START.md
+│   ├── TROUBLESHOOTING.md
+│   ├── USAGE.md
+│   ├── UE5.7_COMPATIBILITY.md
+│   ├── 빠른_문제해결.md
+│   └── 빠른_시작_가이드.md
+│
+├── scripts/                    # ⚙️ 프로젝트 스크립트
+│   ├── StartFileWatcher.bat
+│   └── StartFileWatcher.sh
+│
+├── README.md                   # 메인 README
+├── FIX_SUMMARY.md
+└── .gitignore
 ```
 
 ## 🚀 시작하기
@@ -50,7 +94,7 @@ UE5PCGMCP_AI/
 3. Cursor IDE에서 숲 생성 명령 입력
 4. 완료! 별도의 서버 실행 불필요
 
-> 📘 자세한 내용: [자동 시작 가이드](MCPServer/AUTO_START_GUIDE.md)
+> 📘 자세한 내용: [자동 시작 가이드](MCPServer/docs/AUTO_START_GUIDE.md)
 
 ### 1. Python MCP 서버 설정 (선택사항 - MCP 서버 모드)
 
@@ -59,23 +103,23 @@ UE5PCGMCP_AI/
 ```bash
 cd MCPServer
 pip install -r requirements.txt
-python server.py
+python src/server.py
 ```
 
-**MCP 클라이언트 연동**: Claude Desktop이나 Cursor에서 MCP 서버를 사용하려면 [MCP 설정 가이드](MCP_SETUP.md)를 참조하세요.
+**MCP 클라이언트 연동**: Claude Desktop이나 Cursor에서 MCP 서버를 사용하려면 [MCP 설정 가이드](docs/MCP_SETUP.md)를 참조하세요.
 
 ### 2. 언리얼 엔진 설정
 
 1. 언리얼 엔진 5.7 프로젝트 생성
-2. `Plugins/NLPPCG` 폴더를 프로젝트의 `Plugins` 디렉토리에 복사
+2. `UnrealProject/Plugins/NLPPCG` 폴더를 프로젝트의 `Plugins` 디렉토리에 복사
 3. 프로젝트를 빌드 (.uproject 우클릭 -> Generate Visual Studio project files)
 4. 언리얼 에디터에서 플러그인 활성화 (Edit -> Plugins -> "NLP PCG Forest Generator" 검색)
 
-**⚠️ UE5.7 사용자**: PCG Graph 에디터에서 Static Mesh Spawner 노드의 메시를 수동으로 설정해야 합니다. 자세한 내용은 [UE5.7 호환성 가이드](UE5.7_COMPATIBILITY.md)를 참조하세요.
+**⚠️ UE5.7 사용자**: PCG Graph 에디터에서 Static Mesh Spawner 노드의 메시를 수동으로 설정해야 합니다. 자세한 내용은 [UE5.7 호환성 가이드](docs/UE5.7_COMPATIBILITY.md)를 참조하세요.
 
-**✨ NEW! 자동 초기화**: ForestPCGManager를 레벨에 배치하면 자동으로 MCPClient가 생성되고 연결됩니다! [빠른 시작 가이드](Plugins/NLPPCG/QUICK_START.md)를 참조하세요.
+**✨ NEW! 자동 초기화**: ForestPCGManager를 레벨에 배치하면 자동으로 MCPClient가 생성되고 연결됩니다! [빠른 시작 가이드](UnrealProject/Plugins/NLPPCG/QUICK_START.md)를 참조하세요.
 
-**✨ 자동 설정**: 나무 메시가 자동으로 등록되며 에디터에서 수정 가능합니다! [자동 설정 가이드](AUTO_SETUP_GUIDE.md)를 참조하세요.
+**✨ 자동 설정**: 나무 메시가 자동으로 등록되며 에디터에서 수정 가능합니다! [자동 설정 가이드](docs/AUTO_SETUP_GUIDE.md)를 참조하세요.
 
 ### 3. 레벨에서 사용하기
 
@@ -225,7 +269,7 @@ ForestManager->TreeMesh = MyCustomTreeMesh;
 
 ### 2. 새로운 나무 종류 추가
 
-`MCPServer/nlp_handler.py`:
+`MCPServer/src/nlp_handler.py`:
 ```python
 self.tree_types = {
     '소나무': 'pine',
@@ -261,38 +305,38 @@ self.tree_types = {
 
 ### 핵심 클래스
 
-- **MCPServer/nlp_handler.py**: 자연어 → PCG 파라미터 변환
-- **MCPServer/server.py**: MCP 서버 구현
-- **PCGForestGenerator.h/cpp**: PCG 포인트 생성 (Plugins/NLPPCG/Source/NLPPCG)
-- **MCPClient.h/cpp**: MCP 통신 클라이언트 (Plugins/NLPPCG/Source/NLPPCG)
-- **ForestPCGManager.h/cpp**: 숲 관리 액터 (Plugins/NLPPCG/Source/NLPPCG)
+- **MCPServer/src/nlp_handler.py**: 자연어 → PCG 파라미터 변환
+- **MCPServer/src/server.py**: MCP 서버 구현
+- **PCGForestGenerator.h/cpp**: PCG 포인트 생성 (UnrealProject/Plugins/NLPPCG/Source/NLPPCG)
+- **MCPClient.h/cpp**: MCP 통신 클라이언트 (UnrealProject/Plugins/NLPPCG/Source/NLPPCG)
+- **ForestPCGManager.h/cpp**: 숲 관리 액터 (UnrealProject/Plugins/NLPPCG/Source/NLPPCG)
 
 ## 🔮 고급 기능 (구현 완료)
 
-✅ **구현된 기능** ([상세 가이드](ADVANCED_FEATURES.md))
+✅ **구현된 기능** ([상세 가이드](docs/ADVANCED_FEATURES.md))
 
 - [x] **LLM 통합 (Claude API)** - 감성적 표현과 복잡한 자연어 처리
   - "아름다운 가을 숲", "신비로운 자작나무 숲" 등 고급 명령 지원
   - 계절, 분위기 기반 자동 파라미터 생성
-  - [llm_handler.py](MCPServer/llm_handler.py)
+  - [llm_handler.py](MCPServer/src/llm_handler.py)
 
 - [x] **나무 메시 자동 선택** - TreeMeshLibrary 시스템
   - 나무 종류별 메시 자동 매핑
   - 계절별 메시 변종 지원
   - 가중치 기반 랜덤 선택
-  - [TreeMeshLibrary.h/cpp](Plugins/NLPPCG/Source/NLPPCG/Public/TreeMeshLibrary.h)
+  - [TreeMeshLibrary.h/cpp](UnrealProject/Plugins/NLPPCG/Source/NLPPCG/Public/TreeMeshLibrary.h)
 
 - [x] **지형 기반 배치** - 경사, 고도 분석
   - 경사 필터링 (0-45도 범위 설정 가능)
   - 경사에 따른 자동 밀도/스케일 조정
   - 지형 법선에 나무 정렬
-  - [PCGTerrainAdapter.h/cpp](Plugins/NLPPCG/Source/NLPPCG/Public/PCGTerrainAdapter.h)
+  - [PCGTerrainAdapter.h/cpp](UnrealProject/Plugins/NLPPCG/Source/NLPPCG/Public/PCGTerrainAdapter.h)
 
 - [x] **바이옴 시스템** - 실제 생태계 모방
   - 침엽수림, 활엽수림, 혼합림, 타이가 등 프리셋
   - 층위 구조 (교목층, 아교목층, 관목층)
   - 기후 조건 기반 바이옴 자동 선택
-  - [BiomeSystem.h/cpp](Plugins/NLPPCG/Source/NLPPCG/Public/BiomeSystem.h)
+  - [BiomeSystem.h/cpp](UnrealProject/Plugins/NLPPCG/Source/NLPPCG/Public/BiomeSystem.h)
 
 📋 **향후 개선 사항**
 
