@@ -154,17 +154,38 @@ class FileBasedCommunication:
         }
         return self.send_command_raw(command_data)
 
-    def send_command_raw(self, command_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Raw 명령을 파일로 저장"""
+    def check_ue5_command(self) -> Optional[Dict[str, Any]]:
+        """UE5에서 생성한 명령 파일 확인"""
+        ue5_command_file = self.command_file.parent / "ue5_command.json"
+
+        if not ue5_command_file.exists():
+            return None
+
         try:
-            with open(self.command_file, 'w', encoding='utf-8') as f:
+            with open(ue5_command_file, 'r', encoding='utf-8') as f:
+                command_data = json.load(f)
+
+            # 파일 삭제 (중복 처리 방지)
+            ue5_command_file.unlink()
+
+            return command_data
+        except Exception as e:
+            print(f"Error reading UE5 command: {e}")
+            return None
+
+    def send_command_raw(self, command_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Raw 명령을 UE5로 전송 (mcp_response.json으로 저장)"""
+        try:
+            # UE5가 읽을 응답 파일에 저장
+            response_file = self.command_file.parent / "mcp_response.json"
+
+            with open(response_file, 'w', encoding='utf-8') as f:
                 json.dump(command_data, f, indent=2, ensure_ascii=False)
 
             return {
                 "success": True,
                 "message": f"✅ 명령이 UE5로 전송되었습니다.",
-                "file": str(self.command_file),
-                "note": "UE5 에디터에서 Python 스크립트(mcp_command_watcher.py)를 실행하여 명령을 처리하세요.",
+                "file": str(response_file),
                 "action": command_data.get("action", "unknown")
             }
         except Exception as e:

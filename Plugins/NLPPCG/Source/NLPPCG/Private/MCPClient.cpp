@@ -5,10 +5,14 @@
 #include "Interfaces/IHttpResponse.h"
 #include "Json.h"
 #include "JsonUtilities.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "HAL/PlatformFileManager.h"
 
 AMCPClient::AMCPClient()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 0.1f;  // 0.1초마다 Tick
 }
 
 void AMCPClient::BeginPlay()
@@ -21,11 +25,36 @@ void AMCPClient::BeginPlay()
 	}
 }
 
+void AMCPClient::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (!bUseFileCommunication)
+	{
+		return;
+	}
+
+	TimeSinceLastPoll += DeltaTime;
+
+	if (TimeSinceLastPoll >= FilePollingInterval)
+	{
+		TimeSinceLastPoll = 0.0f;
+		CheckCommandFile();
+	}
+}
+
 void AMCPClient::SendCommand(const FString& Command)
 {
 	if (Command.IsEmpty())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Empty command, ignoring"));
+		return;
+	}
+
+	// 파일 기반 통신 사용
+	if (bUseFileCommunication)
+	{
+		SendCommandViaFile(Command);
 		return;
 	}
 
@@ -59,39 +88,23 @@ void AMCPClient::SendCommand(const FString& Command)
 		UE_LOG(LogTemp, Log, TEXT("Request body: %s"), *RequestBody);
 	}
 
-	// 실제 MCP 서버가 없을 경우를 대비한 시뮬레이션 모드
-	// 실제 환경에서는 아래 주석을 해제하고 시뮬레이션 코드를 제거
-	/*
+	// 실제 MCP 서버로 HTTP 요청 전송
 	Request->SetURL(ServerURL + TEXT("/rpc"));
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetContentAsString(RequestBody);
-	Request->ProcessRequest();
-	*/
 
-	// === 시뮬레이션 모드 (테스트용) ===
-	// MCP 서버 응답 시뮬레이션
-	FString SimulatedResponse = FString::Printf(TEXT(
-		R"({
-			"action": "create_forest",
-			"parameters": {
-				"tree_type": "pine",
-				"density": "dense",
-				"size": "medium",
-				"area_size": 5000.0,
-				"min_distance": 150.0,
-				"max_distance": 300.0,
-				"randomness": 0.3,
-				"scale_multiplier": 1.0
-			}
-		})"
-	));
+	bool bRequestSent = Request->ProcessRequest();
 
-	// 시뮬레이션 응답 처리
-	ProcessForestCommand(SimulatedResponse);
-
-	// 응답 브로드캐스트
-	OnMCPResponse.Broadcast(FString::Printf(TEXT("시뮬레이션 모드: '%s' 명령 처리됨"), *Command));
+	if (!bRequestSent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to send HTTP request to MCP server"));
+		OnMCPResponse.Broadcast(FString::Printf(TEXT("❌ MCP 서버 연결 실패: %s"), *ServerURL));
+	}
+	else if (bDebugMode)
+	{
+		UE_LOG(LogTemp, Log, TEXT("✅ HTTP request sent to: %s/rpc"), *ServerURL);
+	}
 }
 
 void AMCPClient::ClearForest()
@@ -204,4 +217,101 @@ FPCGForestParameters AMCPClient::ParseForestParameters(TSharedPtr<FJsonObject> P
 	Params.ScaleMultiplier = ParamsObject->GetNumberField(TEXT("scale_multiplier"));
 
 	return Params;
+}
+
+FString AMCPClient::GetProjectIntermediatePath() const
+{
+	return FPaths::ProjectIntermediateDir() / TEXT("MCP_Commands");
+}
+
+void AMCPClient::SendCommandViaFile(const FString& Command)
+{
+	FString CommandDir = GetProjectIntermediatePath();
+	FString CommandFilePath = CommandDir / TEXT("ue5_command.json");
+
+	// 디렉토리 생성
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	if (!PlatformFile.DirectoryExists(*CommandDir))
+	{
+		PlatformFile.CreateDirectoryTree(*CommandDir);
+	}
+
+	// JSON 생성
+	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
+	JsonObject->SetStringField(TEXT("command"), Command);
+	JsonObject->SetNumberField(TEXT("timestamp"), FPlatformTime::Seconds());
+
+	FString JsonString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
+	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+
+	// 파일 저장
+	if (FFileHelper::SaveStringToFile(JsonString, *CommandFilePath))
+	{
+		if (bDebugMode)
+		{
+			UE_LOG(LogTemp, Log, TEXT("✅ Command sent via file: %s"), *CommandFilePath);
+			UE_LOG(LogTemp, Log, TEXT("   Command: %s"), *Command);
+		}
+
+		OnMCPResponse.Broadcast(FString::Printf(TEXT("📁 명령 파일 저장됨: %s"), *Command));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("❌ Failed to write command file: %s"), *CommandFilePath);
+		OnMCPResponse.Broadcast(TEXT("❌ 명령 파일 저장 실패"));
+	}
+}
+
+void AMCPClient::CheckCommandFile()
+{
+	FString CommandDir = GetProjectIntermediatePath();
+	FString ResponseFilePath = CommandDir / TEXT("mcp_response.json");
+
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	// 응답 파일이 존재하는지 확인
+	if (!PlatformFile.FileExists(*ResponseFilePath))
+	{
+		return;
+	}
+
+	// 파일 내용 읽기
+	FString JsonString;
+	if (!FFileHelper::LoadFileToString(JsonString, *ResponseFilePath))
+	{
+		return;
+	}
+
+	// 중복 처리 방지
+	uint32 FileHash = GetTypeHash(JsonString);
+	FString FileHashStr = FString::Printf(TEXT("%u"), FileHash);
+
+	if (LastProcessedCommandHash == FileHashStr)
+	{
+		return;
+	}
+
+	LastProcessedCommandHash = FileHashStr;
+
+	if (bDebugMode)
+	{
+		UE_LOG(LogTemp, Log, TEXT("📥 Received MCP response from file"));
+	}
+
+	// JSON 파싱
+	TSharedPtr<FJsonObject> JsonObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+
+	if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+	{
+		// action 필드 확인
+		if (JsonObject->HasField(TEXT("action")))
+		{
+			ProcessForestCommand(JsonString);
+		}
+	}
+
+	// 처리 완료 후 파일 삭제
+	PlatformFile.DeleteFile(*ResponseFilePath);
 }
