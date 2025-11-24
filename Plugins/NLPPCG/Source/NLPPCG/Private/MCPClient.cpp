@@ -22,6 +22,15 @@ void AMCPClient::BeginPlay()
 	if (bDebugMode)
 	{
 		UE_LOG(LogTemp, Log, TEXT("MCP Client initialized. Server URL: %s"), *ServerURL);
+
+		if (bUseFileCommunication)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("=== File-Based Communication Mode ==="));
+			UE_LOG(LogTemp, Warning, TEXT("📁 Command Dir: %s"), *GetProjectIntermediatePath());
+			UE_LOG(LogTemp, Warning, TEXT("⚠️  IMPORTANT: File Watcher Service must be running!"));
+			UE_LOG(LogTemp, Warning, TEXT("   Start: MCPServer/start_file_watcher.bat"));
+			UE_LOG(LogTemp, Warning, TEXT("====================================="));
+		}
 	}
 }
 
@@ -273,6 +282,17 @@ void AMCPClient::CheckCommandFile()
 	// 응답 파일이 존재하는지 확인
 	if (!PlatformFile.FileExists(*ResponseFilePath))
 	{
+		// 30초마다 한 번씩 안내 메시지 (선택적)
+		static double LastWarningTime = 0.0;
+		double CurrentTime = FPlatformTime::Seconds();
+
+		if (bDebugMode && (CurrentTime - LastWarningTime) > 30.0)
+		{
+			LastWarningTime = CurrentTime;
+			UE_LOG(LogTemp, Log, TEXT("⏳ Waiting for File Watcher Service response..."));
+			UE_LOG(LogTemp, Log, TEXT("   If no response, check if MCPServer/start_file_watcher.bat is running"));
+		}
+
 		return;
 	}
 
