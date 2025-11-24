@@ -4,6 +4,7 @@
 #include "PCGComponent.h"
 #include "PCGGraph.h"
 #include "Elements/PCGStaticMeshSpawner.h"
+#include "MeshSelectors/PCGMeshSelectorWeighted.h"
 #include "Engine/StaticMesh.h"
 #include "UObject/ConstructorHelpers.h"
 #include "EngineUtils.h"
@@ -174,17 +175,24 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 	// 2. Static Mesh Spawner 노드 생성
 	UPCGStaticMeshSpawnerSettings* SpawnerSettings = NewObject<UPCGStaticMeshSpawnerSettings>(PCGGraph);
 
-	// UE5.7 메시 설정
+	// UE5.7 메시 설정 - MeshSelectorWeighted 사용
 	if (TreeMesh)
 	{
-		// UE5.7에서는 MeshSelectorParameters.StaticMeshEntries를 사용
-		FPCGStaticMeshSpawnerEntry MeshEntry;
+		// MeshSelectorWeighted 생성
+		UPCGMeshSelectorWeighted* MeshSelector = NewObject<UPCGMeshSelectorWeighted>(SpawnerSettings);
+
+		// Mesh Entry 생성 및 설정
+		FPCGMeshSelectorWeightedEntry MeshEntry;
 		MeshEntry.Weight = 100;  // 가중치
 		MeshEntry.bOverrideCollisionProfile = false;
 		MeshEntry.Mesh = TSoftObjectPtr<UStaticMesh>(TreeMesh);
 
-		SpawnerSettings->MeshSelectorParameters.bUseAttribute = false;
-		SpawnerSettings->MeshSelectorParameters.StaticMeshEntries.Add(MeshEntry);
+		// Mesh Selector에 Entry 추가
+		MeshSelector->MeshEntries.Add(MeshEntry);
+
+		// Spawner Settings에 Mesh Selector 할당
+		SpawnerSettings->SetMeshSelectorType(UPCGMeshSelectorWeighted::StaticClass());
+		SpawnerSettings->MeshSelectorParameters = MeshSelector;
 
 		UE_LOG(LogTemp, Log, TEXT("Configured Static Mesh Spawner with mesh: %s"), *TreeMesh->GetName());
 	}
