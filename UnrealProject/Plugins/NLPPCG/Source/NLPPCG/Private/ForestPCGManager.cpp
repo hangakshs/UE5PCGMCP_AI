@@ -116,28 +116,41 @@ void AForestPCGManager::GenerateForestFromParameters(const FPCGForestParameters&
 
 void AForestPCGManager::OnForestParametersReceived(const FPCGForestParameters& Parameters)
 {
-	UE_LOG(LogTemp, Log, TEXT("Received forest parameters from MCP"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("🌲 Forest Parameters Received!"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("   Tree Type: %s"), *Parameters.TreeType);
+	UE_LOG(LogTemp, Warning, TEXT("   Density: %s"), *Parameters.Density);
+	UE_LOG(LogTemp, Warning, TEXT("   Area Size: %.1f cm²"), Parameters.AreaSize);
+	UE_LOG(LogTemp, Warning, TEXT("   Min Distance: %.1f cm"), Parameters.MinDistance);
 
 	// 숲 제거 시그널 (AreaSize가 0)
 	if (Parameters.AreaSize <= 0.0f)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("   Action: Clear Forest"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 		ClearForest();
 		return;
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("   Action: Generate Forest"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	SetupPCGGraph(Parameters);
 }
 
 void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 {
+	UE_LOG(LogTemp, Warning, TEXT("🔧 Setting up PCG Graph..."));
+
 	if (!PCGComponent)
 	{
-		UE_LOG(LogTemp, Error, TEXT("PCG Component not found!"));
+		UE_LOG(LogTemp, Error, TEXT("❌ PCG Component not found!"));
 		return;
 	}
 
 	// 영역 크기 계산 (AreaSize는 cm² 단위)
 	float SideLength = FMath::Sqrt(Parameters.AreaSize);
+	UE_LOG(LogTemp, Log, TEXT("   Calculated area side length: %.1f cm"), SideLength);
 
 	// BoundsComponent 크기 업데이트
 	if (BoundsComponent)
@@ -145,7 +158,11 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 		// Extent는 중심에서의 거리이므로 절반
 		float HalfSide = SideLength / 2.0f;
 		BoundsComponent->SetBoxExtent(FVector(HalfSide, HalfSide, 500.0f));
-		UE_LOG(LogTemp, Log, TEXT("Updated BoundsComponent: Extent=(%.1f, %.1f, 500)"), HalfSide, HalfSide);
+		UE_LOG(LogTemp, Warning, TEXT("✅ Updated BoundsComponent: Extent=(%.1f, %.1f, 500)"), HalfSide, HalfSide);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("❌ BoundsComponent not found!"));
 	}
 
 	// PCG 그래프 생성 또는 가져오기
@@ -213,10 +230,15 @@ void AForestPCGManager::SetupPCGGraph(const FPCGForestParameters& Parameters)
 	);
 
 	// PCG 생성 실행
+	UE_LOG(LogTemp, Warning, TEXT("🚀 Executing PCG->Generate()..."));
 	PCGComponent->Generate();
 
-	UE_LOG(LogTemp, Log, TEXT("PCG Forest generated with parameters: Density=%s, MinDist=%.1f"),
-		*Parameters.Density, Parameters.MinDistance);
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("✅ PCG Forest Generation Complete!"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("   Density: %s"), *Parameters.Density);
+	UE_LOG(LogTemp, Warning, TEXT("   Min Distance: %.1f cm"), Parameters.MinDistance);
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 
 	// PCG 그래프를 에셋으로 저장 (에디터에서만, 설정이 활성화된 경우)
 #if WITH_EDITOR
