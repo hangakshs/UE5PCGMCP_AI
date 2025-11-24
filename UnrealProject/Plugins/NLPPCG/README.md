@@ -181,19 +181,56 @@ LogTemp: PCG Forest generated
 - PCGComponent가 활성화되어 있는지 확인
 - Generate() 호출 여부 확인
 
-**문제**: 메시가 보이지 않음
+**문제**: 메시가 보이지 않음 (UE5.7)
 **해결**:
 - TreeMesh 프로퍼티에 메시 할당
-- Static Mesh Spawner 설정 확인
+- **중요**: UE5.7에서는 Static Mesh Spawner의 메시를 코드에서 직접 설정할 수 없습니다
+- PCG Graph를 에셋으로 저장한 후 에디터에서 수동으로 메시를 설정해야 합니다:
+  1. 숲 생성 후 Content Browser에서 생성된 PCG Graph 에셋 찾기 (경로: `/Game/PCG/Graphs/`)
+  2. PCG Graph 에셋을 더블클릭하여 에디터 열기
+  3. Static Mesh Spawner 노드 선택
+  4. Details 패널에서 Mesh Selector Type을 "Mesh Selector Weighted"로 설정
+  5. Mesh Entries를 펼치고 + 버튼 클릭
+  6. Index [0] -> Descriptor -> Mesh에 나무 메시 할당
+  7. 저장 후 ForestPCGManager의 PCG Component에서 Generate 재실행
 
 **문제**: MCP 연결 실패
 **해결**:
 - 현재 시뮬레이션 모드 사용 중
 - 실제 서버 필요 시 주석 해제
 
+## UE5.7 특이사항
+
+### Static Mesh Spawner 메시 설정
+
+UE5.7부터 PCG의 `MeshSelectorParameters`가 Read-Only로 변경되어 C++ 코드에서 직접 메시를 설정할 수 없습니다.
+
+#### 해결 방법
+
+**방법 1: 에디터에서 수동 설정 (권장)**
+
+```
+1. ForestPCGManager의 bSavePCGGraphAsAsset 옵션을 true로 설정
+2. 숲 생성 명령 실행
+3. Content Browser > /Game/PCG/Graphs/ 에서 생성된 PCG Graph 찾기
+4. PCG Graph 에디터에서 Static Mesh Spawner 노드 설정
+5. Mesh Selector Type = "Mesh Selector Weighted"
+6. Mesh Entries에 나무 메시 추가
+```
+
+**방법 2: Blueprint PCG Graph 미리 생성**
+
+```
+1. Content Browser에서 PCG Graph 생성
+2. Forest Generator 노드와 Static Mesh Spawner 노드를 수동으로 연결
+3. Static Mesh Spawner에 메시 미리 설정
+4. ForestPCGManager의 PCGGraphAsset 프로퍼티에 할당
+5. 코드는 파라미터만 업데이트
+```
+
 ## 의존성
 
-- Unreal Engine 5.0+
+- Unreal Engine 5.7+
 - PCG Plugin (엔진 내장)
 - HTTP Module
 - Json Module
