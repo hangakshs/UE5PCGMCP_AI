@@ -27,8 +27,8 @@ void AMCPClient::BeginPlay()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("=== File-Based Communication Mode ==="));
 			UE_LOG(LogTemp, Warning, TEXT("📁 Command Dir: %s"), *GetProjectIntermediatePath());
-			UE_LOG(LogTemp, Warning, TEXT("⚠️  IMPORTANT: File Watcher Service must be running!"));
-			UE_LOG(LogTemp, Warning, TEXT("   Start: MCPServer/start_file_watcher.bat"));
+			UE_LOG(LogTemp, Warning, TEXT("✅ File Watcher Service auto-started via Python"));
+			UE_LOG(LogTemp, Warning, TEXT("   (Started by Content/Python/init_unreal.py)"));
 			UE_LOG(LogTemp, Warning, TEXT("====================================="));
 		}
 	}
@@ -290,7 +290,8 @@ void AMCPClient::CheckCommandFile()
 		{
 			LastWarningTime = CurrentTime;
 			UE_LOG(LogTemp, Log, TEXT("⏳ Waiting for File Watcher Service response..."));
-			UE_LOG(LogTemp, Log, TEXT("   If no response, check if MCPServer/start_file_watcher.bat is running"));
+			UE_LOG(LogTemp, Log, TEXT("   File Watcher Service should be auto-started via Python"));
+			UE_LOG(LogTemp, Log, TEXT("   If no response, check Output Log for Python errors"));
 		}
 
 		return;

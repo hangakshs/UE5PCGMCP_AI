@@ -37,7 +37,24 @@ UE5PCGMCP_AI/
 
 ## 🚀 시작하기
 
-### 1. Python MCP 서버 설정
+### ✨ 간편 시작 (NEW! - 자동 시작 모드)
+
+**파일 감시 서비스가 UE5 에디터 시작 시 자동으로 실행됩니다!**
+
+1. UE5 에디터 열기
+2. Output Log에서 다음 메시지 확인:
+   ```
+   🚀 File Watcher Service Started Automatically!
+   ✅ NLPPCG System Ready!
+   ```
+3. Cursor IDE에서 숲 생성 명령 입력
+4. 완료! 별도의 서버 실행 불필요
+
+> 📘 자세한 내용: [자동 시작 가이드](MCPServer/AUTO_START_GUIDE.md)
+
+### 1. Python MCP 서버 설정 (선택사항 - MCP 서버 모드)
+
+**File Watcher Service (자동 모드)**를 사용하는 경우 이 단계를 건너뛸 수 있습니다.
 
 ```bash
 cd MCPServer
