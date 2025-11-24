@@ -25,8 +25,28 @@ void AMCPClient::BeginPlay()
 
 		if (bUseFileCommunication)
 		{
+			FString CommandDir = GetProjectIntermediatePath();
+
+			// 디렉토리 미리 생성
+			IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+			if (!PlatformFile.DirectoryExists(*CommandDir))
+			{
+				if (PlatformFile.CreateDirectoryTree(*CommandDir))
+				{
+					UE_LOG(LogTemp, Warning, TEXT("✅ Created MCP_Commands directory: %s"), *CommandDir);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("❌ Failed to create MCP_Commands directory: %s"), *CommandDir);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Log, TEXT("✅ MCP_Commands directory exists: %s"), *CommandDir);
+			}
+
 			UE_LOG(LogTemp, Warning, TEXT("=== File-Based Communication Mode ==="));
-			UE_LOG(LogTemp, Warning, TEXT("📁 Command Dir: %s"), *GetProjectIntermediatePath());
+			UE_LOG(LogTemp, Warning, TEXT("📁 Command Dir: %s"), *CommandDir);
 			UE_LOG(LogTemp, Warning, TEXT("✅ File Watcher Service auto-started via Python"));
 			UE_LOG(LogTemp, Warning, TEXT("   (Started by Content/Python/init_unreal.py)"));
 			UE_LOG(LogTemp, Warning, TEXT("====================================="));
@@ -178,6 +198,8 @@ void AMCPClient::HandleHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Re
 
 void AMCPClient::ProcessForestCommand(const FString& JsonResponse)
 {
+	UE_LOG(LogTemp, Warning, TEXT("🔄 Processing Forest Command..."));
+
 	// JSON에서 Unreal Engine Command 부분 추출
 	TSharedPtr<FJsonObject> CommandObject;
 	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonResponse);
@@ -185,25 +207,44 @@ void AMCPClient::ProcessForestCommand(const FString& JsonResponse)
 	if (FJsonSerializer::Deserialize(Reader, CommandObject) && CommandObject.IsValid())
 	{
 		FString Action = CommandObject->GetStringField(TEXT("action"));
+		UE_LOG(LogTemp, Warning, TEXT("   Action: %s"), *Action);
 
 		if (Action == TEXT("create_forest"))
 		{
 			TSharedPtr<FJsonObject> ParamsObject = CommandObject->GetObjectField(TEXT("parameters"));
 			FPCGForestParameters Params = ParseForestParameters(ParamsObject);
 
+			UE_LOG(LogTemp, Warning, TEXT("   Parsed Parameters:"));
+			UE_LOG(LogTemp, Warning, TEXT("      Tree Type: %s"), *Params.TreeType);
+			UE_LOG(LogTemp, Warning, TEXT("      Density: %s"), *Params.Density);
+			UE_LOG(LogTemp, Warning, TEXT("      Area Size: %.1f cm²"), Params.AreaSize);
+			UE_LOG(LogTemp, Warning, TEXT("      Min Distance: %.1f cm"), Params.MinDistance);
+			UE_LOG(LogTemp, Warning, TEXT("   Broadcasting to ForestPCGManager..."));
+
 			// 델리게이트 호출
 			OnForestGenerated.Broadcast(Params);
 
-			if (bDebugMode)
-			{
-				UE_LOG(LogTemp, Log, TEXT("Forest parameters parsed: Type=%s, Density=%s, MinDist=%.1f"),
-					*Params.TreeType, *Params.Density, Params.MinDistance);
-			}
+			UE_LOG(LogTemp, Warning, TEXT("✅ Forest generation command broadcasted"));
 		}
 		else if (Action == TEXT("clear_forest"))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("   Clearing forest..."));
 			ClearForest();
 		}
+		else if (Action == TEXT("error"))
+		{
+			FString ErrorMsg = CommandObject->GetStringField(TEXT("error"));
+			UE_LOG(LogTemp, Error, TEXT("❌ Error from MCP: %s"), *ErrorMsg);
+			OnMCPResponse.Broadcast(FString::Printf(TEXT("❌ 오류: %s"), *ErrorMsg));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("⚠️ Unknown action: %s"), *Action);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("❌ Failed to deserialize forest command JSON"));
 	}
 }
 
@@ -238,11 +279,23 @@ void AMCPClient::SendCommandViaFile(const FString& Command)
 	FString CommandDir = GetProjectIntermediatePath();
 	FString CommandFilePath = CommandDir / TEXT("ue5_command.json");
 
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("🚀 Sending Command via File"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("   Command: %s"), *Command);
+	UE_LOG(LogTemp, Warning, TEXT("   Target File: %s"), *CommandFilePath);
+
 	// 디렉토리 생성
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 	if (!PlatformFile.DirectoryExists(*CommandDir))
 	{
-		PlatformFile.CreateDirectoryTree(*CommandDir);
+		UE_LOG(LogTemp, Warning, TEXT("   Creating directory: %s"), *CommandDir);
+		if (!PlatformFile.CreateDirectoryTree(*CommandDir))
+		{
+			UE_LOG(LogTemp, Error, TEXT("❌ Failed to create directory!"));
+			OnMCPResponse.Broadcast(TEXT("❌ 디렉토리 생성 실패"));
+			return;
+		}
 	}
 
 	// JSON 생성
@@ -254,20 +307,22 @@ void AMCPClient::SendCommandViaFile(const FString& Command)
 	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
 	FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
 
+	UE_LOG(LogTemp, Log, TEXT("   JSON Content: %s"), *JsonString);
+
 	// 파일 저장
 	if (FFileHelper::SaveStringToFile(JsonString, *CommandFilePath))
 	{
-		if (bDebugMode)
-		{
-			UE_LOG(LogTemp, Log, TEXT("✅ Command sent via file: %s"), *CommandFilePath);
-			UE_LOG(LogTemp, Log, TEXT("   Command: %s"), *Command);
-		}
+		UE_LOG(LogTemp, Warning, TEXT("✅ Command file created successfully!"));
+		UE_LOG(LogTemp, Warning, TEXT("   File size: %d bytes"), JsonString.Len());
+		UE_LOG(LogTemp, Warning, TEXT("   Waiting for File Watcher Service to process..."));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 
-		OnMCPResponse.Broadcast(FString::Printf(TEXT("📁 명령 파일 저장됨: %s"), *Command));
+		OnMCPResponse.Broadcast(FString::Printf(TEXT("📁 명령 전송됨: %s"), *Command));
 	}
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("❌ Failed to write command file: %s"), *CommandFilePath);
+		UE_LOG(LogTemp, Error, TEXT("========================================"));
 		OnMCPResponse.Broadcast(TEXT("❌ 명령 파일 저장 실패"));
 	}
 }
@@ -290,6 +345,7 @@ void AMCPClient::CheckCommandFile()
 		{
 			LastWarningTime = CurrentTime;
 			UE_LOG(LogTemp, Log, TEXT("⏳ Waiting for File Watcher Service response..."));
+			UE_LOG(LogTemp, Log, TEXT("   Expected file: %s"), *ResponseFilePath);
 			UE_LOG(LogTemp, Log, TEXT("   File Watcher Service should be auto-started via Python"));
 			UE_LOG(LogTemp, Log, TEXT("   If no response, check Output Log for Python errors"));
 		}
@@ -297,12 +353,21 @@ void AMCPClient::CheckCommandFile()
 		return;
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("📥 Response File Detected!"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("   File: %s"), *ResponseFilePath);
+
 	// 파일 내용 읽기
 	FString JsonString;
 	if (!FFileHelper::LoadFileToString(JsonString, *ResponseFilePath))
 	{
+		UE_LOG(LogTemp, Error, TEXT("❌ Failed to read response file"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 		return;
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("   Content: %s"), *JsonString);
 
 	// 중복 처리 방지
 	uint32 FileHash = GetTypeHash(JsonString);
@@ -310,15 +375,12 @@ void AMCPClient::CheckCommandFile()
 
 	if (LastProcessedCommandHash == FileHashStr)
 	{
+		UE_LOG(LogTemp, Log, TEXT("   ⚠️ Already processed (duplicate), skipping"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 		return;
 	}
 
 	LastProcessedCommandHash = FileHashStr;
-
-	if (bDebugMode)
-	{
-		UE_LOG(LogTemp, Log, TEXT("📥 Received MCP response from file"));
-	}
 
 	// JSON 파싱
 	TSharedPtr<FJsonObject> JsonObject;
@@ -329,10 +391,29 @@ void AMCPClient::CheckCommandFile()
 		// action 필드 확인
 		if (JsonObject->HasField(TEXT("action")))
 		{
+			FString Action = JsonObject->GetStringField(TEXT("action"));
+			UE_LOG(LogTemp, Warning, TEXT("✅ Processing action: %s"), *Action);
 			ProcessForestCommand(JsonString);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("❌ No 'action' field in response"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("❌ Failed to parse JSON response"));
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+
 	// 처리 완료 후 파일 삭제
-	PlatformFile.DeleteFile(*ResponseFilePath);
+	if (PlatformFile.DeleteFile(*ResponseFilePath))
+	{
+		UE_LOG(LogTemp, Log, TEXT("   Response file deleted"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("   Failed to delete response file"));
+	}
 }
