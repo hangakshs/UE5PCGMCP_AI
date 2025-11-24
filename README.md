@@ -46,8 +46,8 @@ UE5PCGMCP_AI/
 │   │   ├── ue5_connector.py  # UE5 연결
 │   │   └── file_watcher_service.py  # 파일 감시 서비스
 │   ├── scripts/               # 실행 스크립트
-│   │   ├── start_file_watcher.bat
-│   │   └── start_file_watcher.sh
+│   │   ├── StartFileWatcher.bat
+│   │   └── StartFileWatcher.sh
 │   ├── tests/                 # 테스트 파일
 │   │   ├── test_nlp.py
 │   │   └── test_file_communication.py
@@ -69,10 +69,6 @@ UE5PCGMCP_AI/
 │   ├── UE5.7_COMPATIBILITY.md
 │   ├── 빠른_문제해결.md
 │   └── 빠른_시작_가이드.md
-│
-├── scripts/                    # ⚙️ 프로젝트 스크립트
-│   ├── StartFileWatcher.bat
-│   └── StartFileWatcher.sh
 │
 ├── README.md                   # 메인 README
 ├── FIX_SUMMARY.md

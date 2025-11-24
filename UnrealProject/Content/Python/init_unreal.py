@@ -36,8 +36,8 @@ def start_file_watcher_service():
             unreal.log_error("")
             unreal.log_error("   MANUAL START REQUIRED:")
             unreal.log_error(f"   1. Open terminal/PowerShell")
-            unreal.log_error(f"   2. Run: {project_root / 'StartFileWatcher.bat'}")
-            unreal.log_error("   OR double-click StartFileWatcher.bat in project folder")
+            unreal.log_error(f"   2. Run: {project_root / 'MCPServer' / 'scripts' / 'StartFileWatcher.bat'}")
+            unreal.log_error("   OR double-click StartFileWatcher.bat in MCPServer/scripts folder")
             unreal.log_error("=" * 70)
             return
 
@@ -65,7 +65,7 @@ def start_file_watcher_service():
             unreal.log_error(f"   Error: {stderr}")
             unreal.log_error("")
             unreal.log_error("   MANUAL START REQUIRED:")
-            unreal.log_error(f"   Run: {project_root / 'StartFileWatcher.bat'}")
+            unreal.log_error(f"   Run: {project_root / 'MCPServer' / 'scripts' / 'StartFileWatcher.bat'}")
             unreal.log_error("=" * 70)
             _file_watcher_process = None
             return

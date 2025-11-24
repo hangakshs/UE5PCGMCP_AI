@@ -27,7 +27,7 @@ REM 서비스 시작
 echo Starting File Watcher Service...
 echo Press Ctrl+C to stop the service
 echo.
-python file_watcher_service.py
+python src/file_watcher_service.py
 
 REM 종료 시
 echo.

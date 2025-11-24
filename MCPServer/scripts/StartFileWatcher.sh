@@ -27,7 +27,7 @@ echo ""
 echo "Starting File Watcher Service..."
 echo "Press Ctrl+C to stop the service"
 echo ""
-python3 file_watcher_service.py
+python3 src/file_watcher_service.py
 
 # 종료 시
 echo ""
