@@ -61,32 +61,57 @@ void AForestPCGManager::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("🏗️  ForestPCGManager::OnConstruction() called"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+
 	// 에디터에서 액터 배치 시 기본 설정
 	if (!TreeMesh)
 	{
+		UE_LOG(LogTemp, Log, TEXT("   Loading default tree mesh..."));
 		LoadDefaultTreeMesh();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("   Tree mesh already set: %s"), *TreeMesh->GetName());
 	}
 
 	// 나무 메시 맵 초기화 (비어있을 경우)
 	if (TreeMeshes.Num() == 0)
 	{
+		UE_LOG(LogTemp, Log, TEXT("   Initializing tree mesh map..."));
 		InitializeDefaultTreeMeshes();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("   Tree mesh map already initialized (%d entries)"), TreeMeshes.Num());
 	}
 
 	// PCG Graph Asset이 설정되어 있으면 사용
 	if (PCGGraphAsset && PCGComponent)
 	{
 		PCGComponent->SetGraph(PCGGraphAsset);
-		UE_LOG(LogTemp, Log, TEXT("Using existing PCG Graph Asset"));
+		UE_LOG(LogTemp, Log, TEXT("   ✅ Using existing PCG Graph Asset: %s"), *PCGGraphAsset->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("   ⚠️  No PCG Graph Asset set (will be created dynamically)"));
 	}
 
 	// MCP 클라이언트 초기화 (에디터 모드)
 	#if WITH_EDITOR
 	if (GetWorld() && GetWorld()->WorldType == EWorldType::Editor)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("   World Type: Editor - Initializing MCP Client..."));
 		InitializeMCPClient();
 	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("   World Type: NOT Editor - Skipping MCP Client init in OnConstruction"));
+	}
 	#endif
+
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 }
 
 void AForestPCGManager::GenerateForestFromNLP(const FString& Command)
@@ -393,32 +418,50 @@ bool AForestPCGManager::SavePCGGraphAsAsset()
 
 void AForestPCGManager::InitializeMCPClient()
 {
+	UE_LOG(LogTemp, Warning, TEXT("🔧 InitializeMCPClient() called"));
+
 	// 자동 생성 플래그가 꺼져 있으면 스킵
 	if (!bAutoCreateMCPClient)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("   ⚠️  bAutoCreateMCPClient is FALSE - skipping"));
 		return;
 	}
 
 	UWorld* World = GetWorld();
 	if (!World)
 	{
+		UE_LOG(LogTemp, Error, TEXT("   ❌ World is NULL - cannot initialize MCP Client"));
 		return;
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("   World: %s"), *World->GetName());
+	UE_LOG(LogTemp, Log, TEXT("   World Type: %d"), (int32)World->WorldType);
 
 	// MCP 클라이언트가 없으면 레벨에서 찾거나 생성
 	if (!MCPClient)
 	{
+		UE_LOG(LogTemp, Log, TEXT("   MCPClient is NULL - searching in level..."));
+
 		// 레벨에서 기존 MCP Client 찾기
+		int32 ClientCount = 0;
 		for (TActorIterator<AMCPClient> It(World); It; ++It)
 		{
+			ClientCount++;
 			MCPClient = *It;
-			UE_LOG(LogTemp, Warning, TEXT("ForestPCGManager: Found existing MCP Client in level"));
+			UE_LOG(LogTemp, Warning, TEXT("   ✅ Found existing MCP Client in level: %s"), *MCPClient->GetName());
 			break;
+		}
+
+		if (ClientCount == 0)
+		{
+			UE_LOG(LogTemp, Log, TEXT("   No existing MCP Client found (searched %d actors)"), ClientCount);
 		}
 
 		// 없으면 새로 생성
 		if (!MCPClient)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("   Creating new MCP Client..."));
+
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.Name = FName(TEXT("AutoMCPClient"));
 			SpawnParams.Owner = this;
@@ -429,27 +472,42 @@ void AForestPCGManager::InitializeMCPClient()
 			if (MCPClient)
 			{
 				MCPClient->bDebugMode = true;
-				UE_LOG(LogTemp, Warning, TEXT("ForestPCGManager: Auto-created MCP Client (Debug Mode: ON)"));
+				UE_LOG(LogTemp, Warning, TEXT("   ✅ Auto-created MCP Client: %s (Debug Mode: ON)"), *MCPClient->GetName());
 			}
 			else
 			{
-				UE_LOG(LogTemp, Error, TEXT("ForestPCGManager: Failed to create MCP Client"));
+				UE_LOG(LogTemp, Error, TEXT("   ❌ CRITICAL: Failed to create MCP Client!"));
+				UE_LOG(LogTemp, Error, TEXT("   Forest generation will NOT work!"));
 				return;
 			}
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("   MCPClient already exists: %s"), *MCPClient->GetName());
 	}
 
 	// 델리게이트 바인딩 (중복 방지를 위해 기존 바인딩 제거 후 추가)
 	if (MCPClient)
 	{
+		UE_LOG(LogTemp, Log, TEXT("   Binding delegate..."));
+
 		// 기존 바인딩 제거
 		MCPClient->OnForestGenerated.RemoveAll(this);
 
 		// 새로 바인딩
 		MCPClient->OnForestGenerated.AddDynamic(this, &AForestPCGManager::OnForestParametersReceived);
-		UE_LOG(LogTemp, Warning, TEXT("ForestPCGManager: MCP Client bound to Forest Manager"));
-		UE_LOG(LogTemp, Warning, TEXT("=== NLPPCG System Ready ==="));
+
+		UE_LOG(LogTemp, Warning, TEXT("   ✅ Delegate bound successfully!"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("✅ NLPPCG System Ready!"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("   ForestPCGManager: %s"), *GetName());
+		UE_LOG(LogTemp, Warning, TEXT("   MCPClient: %s"), *MCPClient->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("   Delegate: OnForestGenerated -> OnForestParametersReceived"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 		UE_LOG(LogTemp, Warning, TEXT("You can now generate forests using natural language commands!"));
 		UE_LOG(LogTemp, Warning, TEXT("Example: '밀집된 소나무 숲'"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	}
 }

@@ -37,25 +37,49 @@ class UE5FileWatcherService:
         self.ue5_command_file = self.comm_dir / "ue5_command.json"
         self.mcp_response_file = self.comm_dir / "mcp_response.json"
 
-        # 디렉토리 생성
-        self.comm_dir.mkdir(parents=True, exist_ok=True)
+        # 디렉토리 생성 및 확인
+        logger.info(f"📁 Initializing File Watcher...")
+        logger.info(f"   Project Root: {self.project_root}")
+        logger.info(f"   Command Dir: {self.comm_dir}")
+        logger.info(f"   Command Dir exists: {self.comm_dir.exists()}")
+
+        if not self.comm_dir.exists():
+            logger.info(f"   Creating Command Dir...")
+            self.comm_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"   Created: {self.comm_dir.exists()}")
+        else:
+            logger.info(f"   Command Dir already exists")
 
         # NLP 핸들러 초기화
         try:
+            # src 디렉토리를 Python 경로에 추가
+            src_dir = Path(__file__).parent
+            if str(src_dir) not in sys.path:
+                sys.path.insert(0, str(src_dir))
+                logger.info(f"   Added to sys.path: {src_dir}")
+
             from nlp_handler import ForestNLPHandler
             self.nlp_handler = ForestNLPHandler()
-            logger.info("✅ NLP Handler initialized")
+            logger.info("✅ NLP Handler initialized successfully")
+        except ImportError as e:
+            logger.error(f"❌ Failed to import NLP Handler: {e}")
+            logger.error(f"   Current working directory: {Path.cwd()}")
+            logger.error(f"   Python path: {sys.path}")
+            logger.error(f"   Attempting to import from: {src_dir}")
+            self.nlp_handler = None
         except Exception as e:
             logger.error(f"❌ Failed to initialize NLP Handler: {e}")
+            logger.error(f"   Error type: {type(e).__name__}")
+            import traceback
+            logger.error(traceback.format_exc())
             self.nlp_handler = None
 
         # 마지막 처리 시간 (중복 방지)
         self.last_processed_hash: Optional[str] = None
         self.is_running = False
 
-        logger.info(f"📁 File Watcher initialized")
-        logger.info(f"   Project Root: {self.project_root}")
-        logger.info(f"   Command Dir: {self.comm_dir}")
+        logger.info(f"✅ File Watcher initialized")
+        logger.info(f"   NLP Handler: {'Available' if self.nlp_handler else 'NOT Available'}")
 
     def start(self, poll_interval: float = 0.5):
         """
@@ -91,14 +115,26 @@ class UE5FileWatcherService:
         if not self.ue5_command_file.exists():
             return
 
+        logger.info(f"\n{'='*70}")
+        logger.info(f"📨 Command file detected!")
+        logger.info(f"   File: {self.ue5_command_file}")
+        logger.info(f"   File size: {self.ue5_command_file.stat().st_size} bytes")
+
         try:
             # 파일 읽기
             with open(self.ue5_command_file, 'r', encoding='utf-8') as f:
-                command_data = json.load(f)
+                file_content = f.read()
+                logger.info(f"   File content: {file_content}")
+
+            # JSON 파싱
+            command_data = json.loads(file_content)
+            logger.info(f"   ✅ JSON parsed successfully")
 
             # 중복 처리 방지 (파일 내용 해시)
             content_hash = hash(json.dumps(command_data, sort_keys=True))
             if content_hash == self.last_processed_hash:
+                logger.info(f"   ⚠️  Duplicate command (already processed), skipping")
+                logger.info(f"{'='*70}\n")
                 return
 
             self.last_processed_hash = content_hash
@@ -107,28 +143,36 @@ class UE5FileWatcherService:
             command = command_data.get('command', '')
             timestamp = command_data.get('timestamp', 0)
 
-            logger.info(f"\n{'='*60}")
-            logger.info(f"📨 Received command from UE5")
-            logger.info(f"   Command: {command}")
+            logger.info(f"   Command: '{command}'")
             logger.info(f"   Timestamp: {timestamp}")
 
             # NLP 파싱 및 응답 생성
+            logger.info(f"   Processing command with NLP Handler...")
             response = self._process_command(command)
+            logger.info(f"   ✅ Command processed")
+            logger.info(f"   Response action: {response.get('action', 'N/A')}")
 
             # 응답 파일 작성
+            logger.info(f"   Writing response file...")
             self._write_response(response)
 
             # 명령 파일 삭제 (처리 완료)
+            logger.info(f"   Deleting command file...")
             self.ue5_command_file.unlink()
-            logger.info(f"✅ Command processed successfully")
-            logger.info(f"{'='*60}\n")
+            logger.info(f"✅ Command file deleted")
+            logger.info(f"✅ Processing complete!")
+            logger.info(f"{'='*70}\n")
 
         except json.JSONDecodeError as e:
             logger.error(f"❌ Invalid JSON in command file: {e}")
+            logger.error(f"   File content: {file_content if 'file_content' in locals() else 'Could not read'}")
+            logger.error(f"{'='*70}\n")
         except Exception as e:
             logger.error(f"❌ Error processing command: {e}")
+            logger.error(f"   Error type: {type(e).__name__}")
             import traceback
             logger.error(traceback.format_exc())
+            logger.error(f"{'='*70}\n")
 
     def _process_command(self, command: str) -> Dict[str, Any]:
         """

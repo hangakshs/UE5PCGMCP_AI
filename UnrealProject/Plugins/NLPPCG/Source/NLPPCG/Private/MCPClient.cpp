@@ -19,44 +19,95 @@ void AMCPClient::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (bDebugMode)
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("🔧 MCPClient::BeginPlay() called"));
+	UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	UE_LOG(LogTemp, Warning, TEXT("   Server URL: %s"), *ServerURL);
+	UE_LOG(LogTemp, Warning, TEXT("   bUseFileCommunication: %s"), bUseFileCommunication ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Warning, TEXT("   bDebugMode: %s"), bDebugMode ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Warning, TEXT("   FilePollingInterval: %.2f seconds"), FilePollingInterval);
+	UE_LOG(LogTemp, Warning, TEXT("   bCanEverTick: %s"), PrimaryActorTick.bCanEverTick ? TEXT("TRUE") : TEXT("FALSE"));
+
+	if (bUseFileCommunication)
 	{
-		UE_LOG(LogTemp, Log, TEXT("MCP Client initialized. Server URL: %s"), *ServerURL);
+		FString CommandDir = GetProjectIntermediatePath();
+		UE_LOG(LogTemp, Warning, TEXT("   Target Command Dir: %s"), *CommandDir);
 
-		if (bUseFileCommunication)
+		// 디렉토리 미리 생성
+		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+		UE_LOG(LogTemp, Warning, TEXT("   Checking directory existence..."));
+		if (!PlatformFile.DirectoryExists(*CommandDir))
 		{
-			FString CommandDir = GetProjectIntermediatePath();
-
-			// 디렉토리 미리 생성
-			IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-			if (!PlatformFile.DirectoryExists(*CommandDir))
+			UE_LOG(LogTemp, Warning, TEXT("   ❌ Directory does not exist, creating..."));
+			if (PlatformFile.CreateDirectoryTree(*CommandDir))
 			{
-				if (PlatformFile.CreateDirectoryTree(*CommandDir))
+				UE_LOG(LogTemp, Warning, TEXT("   ✅ Successfully created directory!"));
+
+				// 생성 확인
+				if (PlatformFile.DirectoryExists(*CommandDir))
 				{
-					UE_LOG(LogTemp, Warning, TEXT("✅ Created MCP_Commands directory: %s"), *CommandDir);
+					UE_LOG(LogTemp, Warning, TEXT("   ✅ Directory existence verified!"));
 				}
 				else
 				{
-					UE_LOG(LogTemp, Error, TEXT("❌ Failed to create MCP_Commands directory: %s"), *CommandDir);
+					UE_LOG(LogTemp, Error, TEXT("   ❌ CRITICAL: Directory created but verification failed!"));
 				}
 			}
 			else
 			{
-				UE_LOG(LogTemp, Log, TEXT("✅ MCP_Commands directory exists: %s"), *CommandDir);
+				UE_LOG(LogTemp, Error, TEXT("   ❌ CRITICAL: Failed to create directory!"));
+				UE_LOG(LogTemp, Error, TEXT("   Forest generation will NOT work!"));
 			}
-
-			UE_LOG(LogTemp, Warning, TEXT("=== File-Based Communication Mode ==="));
-			UE_LOG(LogTemp, Warning, TEXT("📁 Command Dir: %s"), *CommandDir);
-			UE_LOG(LogTemp, Warning, TEXT("✅ File Watcher Service auto-started via Python"));
-			UE_LOG(LogTemp, Warning, TEXT("   (Started by Content/Python/init_unreal.py)"));
-			UE_LOG(LogTemp, Warning, TEXT("====================================="));
 		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("   ✅ Directory already exists"));
+		}
+
+		// 파일 목록 확인
+		TArray<FString> FoundFiles;
+		PlatformFile.FindFiles(FoundFiles, *CommandDir, nullptr);
+		UE_LOG(LogTemp, Warning, TEXT("   Found %d files in directory"), FoundFiles.Num());
+
+		if (FoundFiles.Num() > 0)
+		{
+			UE_LOG(LogTemp, Log, TEXT("   Existing files:"));
+			for (const FString& File : FoundFiles)
+			{
+				UE_LOG(LogTemp, Log, TEXT("      - %s"), *File);
+			}
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("✅ File-Based Communication Mode Active"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("   Command Dir: %s"), *CommandDir);
+		UE_LOG(LogTemp, Warning, TEXT("   File Watcher: Should be auto-started via Python"));
+		UE_LOG(LogTemp, Warning, TEXT("   Tick Interval: %.2f seconds"), FilePollingInterval);
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("⚠️  HTTP Communication Mode (File mode disabled)"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	}
 }
 
 void AMCPClient::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 첫 Tick 로그 (한 번만)
+	static bool bFirstTick = true;
+	if (bFirstTick)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("🔄 MCPClient::Tick() - First tick called!"));
+		UE_LOG(LogTemp, Warning, TEXT("   bUseFileCommunication: %s"), bUseFileCommunication ? TEXT("TRUE") : TEXT("FALSE"));
+		UE_LOG(LogTemp, Warning, TEXT("   FilePollingInterval: %.2f seconds"), FilePollingInterval);
+		bFirstTick = false;
+	}
 
 	if (!bUseFileCommunication)
 	{
@@ -68,6 +119,17 @@ void AMCPClient::Tick(float DeltaTime)
 	if (TimeSinceLastPoll >= FilePollingInterval)
 	{
 		TimeSinceLastPoll = 0.0f;
+
+		// 10초마다 한 번씩 Tick 실행 로그
+		static double LastTickLogTime = 0.0;
+		double CurrentTime = FPlatformTime::Seconds();
+
+		if ((CurrentTime - LastTickLogTime) > 10.0)
+		{
+			LastTickLogTime = CurrentTime;
+			UE_LOG(LogTemp, Log, TEXT("🔄 MCPClient::Tick() - Polling for response file..."));
+		}
+
 		CheckCommandFile();
 	}
 }
@@ -334,18 +396,61 @@ void AMCPClient::CheckCommandFile()
 
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
+	// 첫 체크 로그 (한 번만)
+	static bool bFirstCheck = true;
+	if (bFirstCheck)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("📂 CheckCommandFile() - First check!"));
+		UE_LOG(LogTemp, Warning, TEXT("   Command Dir: %s"), *CommandDir);
+		UE_LOG(LogTemp, Warning, TEXT("   Response File Path: %s"), *ResponseFilePath);
+		UE_LOG(LogTemp, Warning, TEXT("   Directory exists: %s"), PlatformFile.DirectoryExists(*CommandDir) ? TEXT("YES") : TEXT("NO"));
+		bFirstCheck = false;
+	}
+
+	// 디렉토리 존재 확인
+	if (!PlatformFile.DirectoryExists(*CommandDir))
+	{
+		static double LastDirWarningTime = 0.0;
+		double CurrentTime = FPlatformTime::Seconds();
+
+		if ((CurrentTime - LastDirWarningTime) > 30.0)
+		{
+			LastDirWarningTime = CurrentTime;
+			UE_LOG(LogTemp, Error, TEXT("❌ CRITICAL: MCP_Commands directory does not exist!"));
+			UE_LOG(LogTemp, Error, TEXT("   Expected path: %s"), *CommandDir);
+			UE_LOG(LogTemp, Error, TEXT("   Forest generation will NOT work!"));
+		}
+		return;
+	}
+
 	// 응답 파일이 존재하는지 확인
 	if (!PlatformFile.FileExists(*ResponseFilePath))
 	{
-		// 30초마다 한 번씩 안내 메시지 (선택적)
+		// 30초마다 한 번씩 안내 메시지
 		static double LastWarningTime = 0.0;
 		double CurrentTime = FPlatformTime::Seconds();
 
-		if (bDebugMode && (CurrentTime - LastWarningTime) > 30.0)
+		if ((CurrentTime - LastWarningTime) > 30.0)
 		{
 			LastWarningTime = CurrentTime;
 			UE_LOG(LogTemp, Log, TEXT("⏳ Waiting for File Watcher Service response..."));
 			UE_LOG(LogTemp, Log, TEXT("   Expected file: %s"), *ResponseFilePath);
+			UE_LOG(LogTemp, Log, TEXT("   Directory exists: %s"), PlatformFile.DirectoryExists(*CommandDir) ? TEXT("YES") : TEXT("NO"));
+
+			// 디렉토리 내 파일 목록 확인
+			TArray<FString> FoundFiles;
+			PlatformFile.FindFiles(FoundFiles, *CommandDir, nullptr);
+			UE_LOG(LogTemp, Log, TEXT("   Files in directory: %d"), FoundFiles.Num());
+
+			if (FoundFiles.Num() > 0)
+			{
+				UE_LOG(LogTemp, Log, TEXT("   Existing files:"));
+				for (const FString& File : FoundFiles)
+				{
+					UE_LOG(LogTemp, Log, TEXT("      - %s"), *FPaths::GetCleanFilename(File));
+				}
+			}
+
 			UE_LOG(LogTemp, Log, TEXT("   File Watcher Service should be auto-started via Python"));
 			UE_LOG(LogTemp, Log, TEXT("   If no response, check Output Log for Python errors"));
 		}
