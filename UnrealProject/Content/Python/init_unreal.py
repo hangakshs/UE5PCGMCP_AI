@@ -26,7 +26,7 @@ def start_file_watcher_service():
         # 프로젝트 루트 경로
         project_root = Path(unreal.Paths.project_dir())
         mcp_server_dir = project_root / "MCPServer"
-        file_watcher_script = mcp_server_dir / "file_watcher_service.py"
+        file_watcher_script = mcp_server_dir / "src" / "file_watcher_service.py"
 
         # 스크립트 존재 확인
         if not file_watcher_script.exists():
