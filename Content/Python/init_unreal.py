@@ -30,7 +30,15 @@ def start_file_watcher_service():
 
         # 스크립트 존재 확인
         if not file_watcher_script.exists():
-            unreal.log_error(f"File Watcher Service script not found: {file_watcher_script}")
+            unreal.log_error("=" * 70)
+            unreal.log_error("❌ File Watcher Service script not found!")
+            unreal.log_error(f"   Expected location: {file_watcher_script}")
+            unreal.log_error("")
+            unreal.log_error("   MANUAL START REQUIRED:")
+            unreal.log_error(f"   1. Open terminal/PowerShell")
+            unreal.log_error(f"   2. Run: {project_root / 'StartFileWatcher.bat'}")
+            unreal.log_error("   OR double-click StartFileWatcher.bat in project folder")
+            unreal.log_error("=" * 70)
             return
 
         # Python 실행 파일 찾기
@@ -44,6 +52,23 @@ def start_file_watcher_service():
             stderr=subprocess.PIPE,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         )
+
+        # 프로세스 시작 대기 및 확인
+        import time
+        time.sleep(0.5)
+
+        if _file_watcher_process.poll() is not None:
+            # 프로세스가 즉시 종료됨 - 에러 발생
+            stderr = _file_watcher_process.stderr.read().decode('utf-8', errors='ignore')
+            unreal.log_error("=" * 70)
+            unreal.log_error("❌ File Watcher Service failed to start!")
+            unreal.log_error(f"   Error: {stderr}")
+            unreal.log_error("")
+            unreal.log_error("   MANUAL START REQUIRED:")
+            unreal.log_error(f"   Run: {project_root / 'StartFileWatcher.bat'}")
+            unreal.log_error("=" * 70)
+            _file_watcher_process = None
+            return
 
         unreal.log("=" * 70)
         unreal.log("🚀 File Watcher Service Started Automatically!")
@@ -60,7 +85,14 @@ def start_file_watcher_service():
         unreal.log("=" * 70)
 
     except Exception as e:
-        unreal.log_error(f"Failed to start File Watcher Service: {e}")
+        unreal.log_error("=" * 70)
+        unreal.log_error("❌ Failed to start File Watcher Service!")
+        unreal.log_error(f"   Error: {e}")
+        unreal.log_error("")
+        unreal.log_error("   MANUAL START REQUIRED:")
+        unreal.log_error("   Double-click 'StartFileWatcher.bat' in project folder")
+        unreal.log_error("   OR see '빠른_문제해결.md' for help")
+        unreal.log_error("=" * 70)
         import traceback
         unreal.log_error(traceback.format_exc())
 
