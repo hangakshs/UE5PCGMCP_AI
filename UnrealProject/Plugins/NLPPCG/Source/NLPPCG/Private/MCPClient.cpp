@@ -12,7 +12,7 @@
 AMCPClient::AMCPClient()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.TickInterval = 0.1f;  // 0.1초마다 Tick
+	PrimaryActorTick.TickInterval = 0.05f;  // 50ms마다 Tick (더 빠른 응답)
 }
 
 void AMCPClient::Initialize()
