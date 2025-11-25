@@ -137,10 +137,24 @@ class UE5FileWatcherService:
         logger.info(f"   File size: {self.ue5_command_file.stat().st_size} bytes")
 
         try:
-            # 파일 읽기
-            with open(self.ue5_command_file, 'r', encoding='utf-8') as f:
-                file_content = f.read()
-                logger.info(f"   File content: {file_content}")
+            # 파일 읽기 - 다양한 인코딩 시도 (UE5가 UTF-16으로 작성할 수 있음)
+            file_content = None
+            encodings_to_try = ['utf-16-le', 'utf-16-be', 'utf-8-sig', 'utf-8', 'cp1252']
+
+            for encoding in encodings_to_try:
+                try:
+                    with open(self.ue5_command_file, 'r', encoding=encoding) as f:
+                        file_content = f.read()
+                        logger.info(f"   ✅ File read successfully with encoding: {encoding}")
+                        logger.info(f"   File content: {file_content}")
+                        break
+                except (UnicodeDecodeError, UnicodeError):
+                    continue
+
+            if file_content is None:
+                logger.error(f"   ❌ Failed to read file with any encoding")
+                logger.error(f"   Tried encodings: {encodings_to_try}")
+                return
 
             # JSON 파싱
             command_data = json.loads(file_content)
