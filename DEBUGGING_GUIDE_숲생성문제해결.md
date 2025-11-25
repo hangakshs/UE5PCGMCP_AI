@@ -67,7 +67,7 @@ LogTemp: Warning:    MCPClient: [이름]
 
 2. Python 테스트 스크립트 실행:
    ```
-   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/Content/Python/test_forest_generation.py"
    ```
 
 #### 1.3 MCPClient 설정 확인
@@ -101,7 +101,7 @@ LogTemp: Warning:    bDebugMode: TRUE
 
 3. 또는 Cmd 입력창에:
    ```
-   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/Content/Python/test_forest_generation.py"
    ```
 
 ### 방법 2: Blueprint 사용
@@ -113,7 +113,7 @@ LogTemp: Warning:    bDebugMode: TRUE
 ### 방법 3: 직접 파일 생성 (File Watcher 테스트)
 
 **명령 파일 수동 생성:**
-- 위치: `<프로젝트경로>/UnrealProject/Intermediate/MCP_Commands/ue5_command.json`
+- 위치: `<프로젝트경로>/Intermediate/MCP_Commands/ue5_command.json`
 - 내용:
   ```json
   {
@@ -357,7 +357,7 @@ if not cmd_dir.exists():
 
 ### 5. 테스트 스크립트 실행
    ```
-   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/Content/Python/test_forest_generation.py"
    ```
 
 ---
@@ -418,7 +418,7 @@ mkdir "<프로젝트경로>\UnrealProject\Intermediate\MCP_Commands"
 
 1. **Python 테스트 스크립트 실행:**
    ```
-   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/Content/Python/test_forest_generation.py"
    ```
 
 2. **Output Log에서 다음 순서로 메시지 확인:**
