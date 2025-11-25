@@ -86,8 +86,8 @@ ServerURL = "http://localhost:8000";
 
 ```bash
 # Windows
-cd "F:/Project/Portfolio_MCP_PCG"
-"D:/UnrealEngine/UE_5.7/Engine/Build/BatchFiles/Build.bat" Portfolio_MCP_PCGEditor Win64 Development "F:/Project/Portfolio_MCP_PCG/Portfolio_MCP_PCG.uproject"
+cd "<프로젝트경로>"
+"<UnrealEngine경로>/Engine/Build/BatchFiles/Build.bat" Portfolio_MCP_PCGEditor Win64 Development "<프로젝트경로>/UnrealProject/Portfolio_MCP_PCG.uproject"
 ```
 
 ### 2. **UE5 에디터에서 확인**
@@ -191,7 +191,7 @@ Action: create_forest
 2. **파일 확인**:
    ```bash
    # Windows
-   dir "F:/Project/Portfolio_MCP_PCG/Intermediate/MCP_Commands"
+   dir "<프로젝트경로>\UnrealProject\Intermediate\MCP_Commands"
    ```
 
 3. **MCPClient 설정 확인**:

@@ -43,8 +43,8 @@ UE5 에디터의 **Output Log**에서 다음 메시지를 확인할 수 있습�
 🚀 File Watcher Service Started Automatically!
 ======================================================================
    Process ID: [PID]
-   Script: F:/Project/Portfolio_MCP_PCG/MCPServer/file_watcher_service.py
-   Command Dir: F:/Project/Portfolio_MCP_PCG/Intermediate/MCP_Commands
+   Script: <프로젝트경로>/MCPServer/src/file_watcher_service.py
+   Command Dir: <프로젝트경로>/UnrealProject/Intermediate/MCP_Commands
 ======================================================================
 ✅ NLPPCG System Ready!
    You can now generate forests using natural language commands!

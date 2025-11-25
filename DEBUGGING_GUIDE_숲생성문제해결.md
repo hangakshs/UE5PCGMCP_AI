@@ -67,7 +67,7 @@ LogTemp: Warning:    MCPClient: [이름]
 
 2. Python 테스트 스크립트 실행:
    ```
-   py "F:/Project/Portfolio_MCP_PCG/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
    ```
 
 #### 1.3 MCPClient 설정 확인
@@ -101,7 +101,7 @@ LogTemp: Warning:    bDebugMode: TRUE
 
 3. 또는 Cmd 입력창에:
    ```
-   py "F:/Project/Portfolio_MCP_PCG/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
    ```
 
 ### 방법 2: Blueprint 사용
@@ -113,7 +113,7 @@ LogTemp: Warning:    bDebugMode: TRUE
 ### 방법 3: 직접 파일 생성 (File Watcher 테스트)
 
 **명령 파일 수동 생성:**
-- 위치: `F:/Project/Portfolio_MCP_PCG/Intermediate/MCP_Commands/ue5_command.json`
+- 위치: `<프로젝트경로>/UnrealProject/Intermediate/MCP_Commands/ue5_command.json`
 - 내용:
   ```json
   {
@@ -268,24 +268,24 @@ LogTemp: Warning: ✅ PCG Forest Generation Complete!
 
 ### 필수 디렉토리:
 ```
-F:/Project/Portfolio_MCP_PCG/
-├── Intermediate/
-│   └── MCP_Commands/           ← 이 디렉토리 필수!
-│       ├── ue5_command.json    ← UE5가 생성
-│       └── mcp_response.json   ← File Watcher가 생성
+<프로젝트경로>/
+├── UnrealProject/
+│   ├── Intermediate/
+│   │   └── MCP_Commands/           ← 이 디렉토리 필수!
+│   │       ├── ue5_command.json    ← UE5가 생성
+│   │       └── mcp_response.json   ← File Watcher가 생성
+│   └── Content/
+│       └── Python/
+│           ├── init_unreal.py
+│           └── test_forest_generation.py
 │
-├── MCPServer/
-│   ├── src/
-│   │   ├── file_watcher_service.py
-│   │   └── nlp_handler.py
-│   ├── scripts/
-│   │   └── StartFileWatcher.bat
-│   └── file_watcher.log        ← 로그 파일
-│
-└── Content/
-    └── Python/
-        ├── init_unreal.py
-        └── test_forest_generation.py
+└── MCPServer/
+    ├── src/
+    │   ├── file_watcher_service.py
+    │   └── nlp_handler.py
+    ├── scripts/
+    │   └── StartFileWatcher.bat
+    └── file_watcher.log        ← 로그 파일
 ```
 
 ### 디렉토리 생성 확인:
@@ -348,7 +348,7 @@ if not cmd_dir.exists():
 
 ### 3. 디렉토리 초기화
    ```cmd
-   rd /s /q "F:\Project\Portfolio_MCP_PCG\Intermediate\MCP_Commands"
+   rd /s /q "<프로젝트경로>\UnrealProject\Intermediate\MCP_Commands"
    ```
 
 ### 4. UE5 에디터 재시작
@@ -357,7 +357,7 @@ if not cmd_dir.exists():
 
 ### 5. 테스트 스크립트 실행
    ```
-   py "F:/Project/Portfolio_MCP_PCG/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
    ```
 
 ---
@@ -399,7 +399,7 @@ if managers:
 
 ### MCP_Commands 디렉토리 수동 생성:
 ```cmd
-mkdir "F:\Project\Portfolio_MCP_PCG\Intermediate\MCP_Commands"
+mkdir "<프로젝트경로>\UnrealProject\Intermediate\MCP_Commands"
 ```
 
 ---
@@ -408,7 +408,7 @@ mkdir "F:\Project\Portfolio_MCP_PCG\Intermediate\MCP_Commands"
 
 1. **Python 테스트 스크립트 실행:**
    ```
-   py "F:/Project/Portfolio_MCP_PCG/Content/Python/test_forest_generation.py"
+   py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
    ```
 
 2. **Output Log에서 다음 순서로 메시지 확인:**
