@@ -391,9 +391,19 @@ powershell Get-Content file_watcher.log -Wait -Tail 20
 ```python
 # UE5 Python 콘솔에서
 import unreal
+
+# UE5.7에서는 EditorActorSubsystem 사용
+editor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+all_actors = editor_subsystem.get_all_level_actors()
+managers = [actor for actor in all_actors if isinstance(actor, unreal.ForestPCGManager)]
+
+if managers:
+    managers[0].generate_forest_from_nlp("밀집된 소나무 숲")
+
+# 또는 GameplayStatics 사용 (런타임에서도 동작)
 world = unreal.EditorLevelLibrary.get_editor_world()
 managers = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.ForestPCGManager)
-if managers:
+if managers and len(managers) > 0:
     managers[0].generate_forest_from_nlp("밀집된 소나무 숲")
 ```
 
