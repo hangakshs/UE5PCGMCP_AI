@@ -15,12 +15,10 @@ AMCPClient::AMCPClient()
 	PrimaryActorTick.TickInterval = 0.1f;  // 0.1초마다 Tick
 }
 
-void AMCPClient::BeginPlay()
+void AMCPClient::Initialize()
 {
-	Super::BeginPlay();
-
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
-	UE_LOG(LogTemp, Warning, TEXT("🔧 MCPClient::BeginPlay() called"));
+	UE_LOG(LogTemp, Warning, TEXT("🔧 MCPClient::Initialize() called"));
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("   Server URL: %s"), *ServerURL);
 	UE_LOG(LogTemp, Warning, TEXT("   bUseFileCommunication: %s"), bUseFileCommunication ? TEXT("TRUE") : TEXT("FALSE"));
@@ -93,6 +91,14 @@ void AMCPClient::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("⚠️  HTTP Communication Mode (File mode disabled)"));
 		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	}
+}
+
+void AMCPClient::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// BeginPlay가 호출되면 Initialize 실행
+	Initialize();
 }
 
 void AMCPClient::Tick(float DeltaTime)
