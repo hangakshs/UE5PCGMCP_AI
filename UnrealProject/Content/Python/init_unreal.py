@@ -45,13 +45,16 @@ def start_file_watcher_service():
         python_exe = sys.executable
 
         # 파일 감시 서비스 시작 (백그라운드 프로세스)
+        # 프로젝트 루트를 명령줄 인수로 전달
         _file_watcher_process = subprocess.Popen(
-            [python_exe, str(file_watcher_script)],
+            [python_exe, str(file_watcher_script), '--project-root', str(project_root)],
             cwd=str(mcp_server_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         )
+
+        unreal.log(f"🚀 Starting File Watcher with project root: {project_root}")
 
         # 프로세스 시작 대기 및 확인
         import time

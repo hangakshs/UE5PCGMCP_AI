@@ -31,16 +31,22 @@ class UE5FileWatcherService:
         if project_root is None:
             current_file = Path(__file__).resolve()
             project_root = current_file.parent.parent
+            logger.warning("⚠️ Project root not provided, using auto-detection")
 
-        self.project_root = project_root
-        self.comm_dir = project_root / "Intermediate" / "MCP_Commands"
+        self.project_root = Path(project_root).resolve()  # 절대 경로로 변환
+        self.comm_dir = self.project_root / "Intermediate" / "MCP_Commands"
         self.ue5_command_file = self.comm_dir / "ue5_command.json"
         self.mcp_response_file = self.comm_dir / "mcp_response.json"
 
         # 디렉토리 생성 및 확인
-        logger.info(f"📁 Initializing File Watcher...")
+        logger.info("=" * 70)
+        logger.info("📁 Initializing File Watcher...")
+        logger.info("=" * 70)
         logger.info(f"   Project Root: {self.project_root}")
+        logger.info(f"   Project Root (absolute): {self.project_root.resolve()}")
         logger.info(f"   Command Dir: {self.comm_dir}")
+        logger.info(f"   Command File: {self.ue5_command_file}")
+        logger.info(f"   Response File: {self.mcp_response_file}")
         logger.info(f"   Command Dir exists: {self.comm_dir.exists()}")
 
         if not self.comm_dir.exists():
@@ -250,13 +256,31 @@ def main():
 ╚══════════════════════════════════════════════════════════╝
     """)
 
-    # 프로젝트 루트 확인
-    current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent
+    # 명령줄 인수에서 프로젝트 루트 읽기
+    import argparse
+    parser = argparse.ArgumentParser(description='UE5 File Watcher Service')
+    parser.add_argument('--project-root', type=str, help='UE5 Project root directory')
+    args = parser.parse_args()
+
+    # 프로젝트 루트 결정
+    if args.project_root:
+        project_root = Path(args.project_root)
+        logger.info(f"📂 Project Root (from command line): {project_root}")
+    else:
+        # 폴백: 스크립트 위치 기준으로 계산
+        current_file = Path(__file__).resolve()
+        project_root = current_file.parent.parent
+        logger.info(f"📂 Project Root (auto-detected): {project_root}")
 
     print(f"📂 Project Root: {project_root}")
     print(f"📁 Communication Dir: {project_root / 'Intermediate' / 'MCP_Commands'}")
     print()
+
+    # 경로 유효성 확인
+    if not project_root.exists():
+        logger.error(f"❌ Project root does not exist: {project_root}")
+        logger.error("   Please check the path and try again")
+        return
 
     # 서비스 시작
     service = UE5FileWatcherService(project_root)
