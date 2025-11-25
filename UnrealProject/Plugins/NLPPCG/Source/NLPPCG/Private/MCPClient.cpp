@@ -377,8 +377,8 @@ void AMCPClient::SendCommandViaFile(const FString& Command)
 
 	UE_LOG(LogTemp, Log, TEXT("   JSON Content: %s"), *JsonString);
 
-	// 파일 저장
-	if (FFileHelper::SaveStringToFile(JsonString, *CommandFilePath))
+	// 파일 저장 (UTF-8 인코딩 명시)
+	if (FFileHelper::SaveStringToFile(JsonString, *CommandFilePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("✅ Command file created successfully!"));
 		UE_LOG(LogTemp, Warning, TEXT("   File size: %d bytes"), JsonString.Len());
