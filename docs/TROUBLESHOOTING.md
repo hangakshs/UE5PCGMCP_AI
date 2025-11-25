@@ -18,7 +18,7 @@ File Watcher Service가 자동으로 시작되지 않았습니다.
 ```python
 import sys
 from pathlib import Path
-project_dir = Path(r"F:/Project/Portfolio_MCP_PCG")  # 실제 프로젝트 경로로 변경
+project_dir = Path(r"<프로젝트경로>/UnrealProject")  # 실제 프로젝트 경로로 변경
 sys.path.insert(0, str(project_dir / "Content" / "Python"))
 import init_unreal
 ```

@@ -7,7 +7,7 @@ UE5 에디터의 Python 콘솔에서 실행하여 숲 생성을 테스트합니�
 2. 이 파일 선택하거나 아래 명령을 Python 콘솔에 복사
 
 또는 Output Log에서 Cmd 입력창에:
-    py "F:/Project/Portfolio_MCP_PCG/Content/Python/test_forest_generation.py"
+    py "<프로젝트경로>/UnrealProject/Content/Python/test_forest_generation.py"
 """
 import unreal
 
