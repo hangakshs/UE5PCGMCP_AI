@@ -44,7 +44,7 @@ UE5 에디터의 **Output Log**에서 다음 메시지를 확인할 수 있습�
 ======================================================================
    Process ID: [PID]
    Script: <프로젝트경로>/MCPServer/src/file_watcher_service.py
-   Command Dir: <프로젝트경로>/UnrealProject/Intermediate/MCP_Commands
+   Command Dir: <프로젝트경로>/Intermediate/MCP_Commands
 ======================================================================
 ✅ NLPPCG System Ready!
    You can now generate forests using natural language commands!
