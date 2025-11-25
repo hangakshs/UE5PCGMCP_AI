@@ -200,8 +200,8 @@ def check_system_status():
     if mcp_clients:
         for i, client in enumerate(mcp_clients):
             unreal.log(f"   [{i}] {client.get_name()}")
-            use_file = client.get_editor_property('b_use_file_communication')
-            debug = client.get_editor_property('b_debug_mode')
+            use_file = client.get_editor_property('use_file_communication')
+            debug = client.get_editor_property('debug_mode')
             unreal.log(f"       Use File Communication: {use_file}")
             unreal.log(f"       Debug Mode: {debug}")
 
