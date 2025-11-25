@@ -491,6 +491,10 @@ void AForestPCGManager::InitializeMCPClient()
 	else
 	{
 		UE_LOG(LogTemp, Log, TEXT("   MCPClient already exists: %s"), *MCPClient->GetName());
+
+		// 기존 MCPClient도 재초기화 (디렉토리 생성 등)
+		UE_LOG(LogTemp, Warning, TEXT("   🔧 Re-initializing existing MCPClient..."));
+		MCPClient->Initialize();
 	}
 
 	// 델리게이트 바인딩 (중복 방지를 위해 기존 바인딩 제거 후 추가)
