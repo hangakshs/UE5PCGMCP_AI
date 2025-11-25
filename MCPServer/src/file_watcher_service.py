@@ -11,12 +11,22 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
 
-# 로깅 설정
+# 로깅 설정 - Windows 콘솔 인코딩 문제 해결
+import io
+
+# Windows 콘솔 인코딩 설정
+if sys.platform == 'win32':
+    # Windows 콘솔을 UTF-8로 강제 설정
+    if sys.stdout.encoding != 'utf-8':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    if sys.stderr.encoding != 'utf-8':
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('file_watcher.log'),
+        logging.FileHandler('file_watcher.log', encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
