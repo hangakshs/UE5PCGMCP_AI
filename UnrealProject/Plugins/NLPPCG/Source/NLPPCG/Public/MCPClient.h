@@ -60,6 +60,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "MCP")
 	void ClearForest();
 
+	/**
+	 * MCPClient 수동 초기화 (에디터 환경에서 SpawnActor 후 호출)
+	 * BeginPlay가 자동으로 호출되지 않는 경우 사용
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MCP")
+	void Initialize();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;

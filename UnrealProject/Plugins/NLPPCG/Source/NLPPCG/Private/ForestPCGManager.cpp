@@ -475,10 +475,10 @@ void AForestPCGManager::InitializeMCPClient()
 				MCPClient->bUseFileCommunication = true;  // 명시적으로 설정
 				UE_LOG(LogTemp, Warning, TEXT("   ✅ Auto-created MCP Client: %s (Debug Mode: ON)"), *MCPClient->GetName());
 
-				// 에디터 환경에서는 BeginPlay가 자동으로 호출되지 않으므로 수동 호출
-				// 이렇게 하면 디렉토리 생성 및 기타 초기화가 수행됨
-				UE_LOG(LogTemp, Warning, TEXT("   🔧 Manually initializing MCPClient (calling BeginPlay)..."));
-				MCPClient->BeginPlay();
+				// 에디터 환경에서는 BeginPlay가 자동으로 호출되지 않으므로 수동 초기화
+				// Initialize()를 호출하여 디렉토리 생성 및 기타 초기화 수행
+				UE_LOG(LogTemp, Warning, TEXT("   🔧 Manually initializing MCPClient..."));
+				MCPClient->Initialize();
 			}
 			else
 			{
