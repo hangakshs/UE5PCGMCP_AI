@@ -102,15 +102,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Forest", meta = (DisplayName = "Initialize Default Tree Meshes"))
 	void InitializeDefaultTreeMeshes();
 
+	/**
+	 * MCP 클라이언트 초기화 (에디터 모드에서 수동 호출 가능)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MCP")
+	void InitializeMCPClient();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
-	UFUNCTION()
 	void OnForestParametersReceived(const FPCGForestParameters& Parameters);
 
 	void SetupPCGGraph(const FPCGForestParameters& Parameters);
 	void LoadDefaultTreeMesh();
-	void InitializeMCPClient();
 };

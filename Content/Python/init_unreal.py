@@ -1,6 +1,12 @@
 """
 UE5 Startup Script for MCP Integration
+
 UE5 에디터 시작 시 자동으로 File Watcher Service를 시작합니다.
+
+주의:
+- 현재는 C++ 플러그인 모듈(NLPPCGModule)에서 File Watcher를 시작하므로
+  이 스크립트에서는 중복 실행을 방지하기 위해 시작하지 않습니다.
+- Python 경로 설정만 수행합니다.
 """
 import unreal
 import sys
@@ -14,7 +20,12 @@ _file_watcher_process = None
 
 
 def start_file_watcher_service():
-    """파일 감시 서비스를 백그라운드 프로세스로 시작"""
+    """
+    파일 감시 서비스를 백그라운드 프로세스로 시작
+
+    Note: 이 함수는 수동 시작을 위해 남겨두었지만,
+    현재는 C++ 모듈에서 자동 시작됩니다.
+    """
     global _file_watcher_process
 
     # 이미 실행 중이면 스킵
@@ -45,12 +56,23 @@ def start_file_watcher_service():
         python_exe = sys.executable
 
         # 파일 감시 서비스 시작 (백그라운드 프로세스)
+        # stdout/stderr를 캡처하여 UE5 로그에 표시
         # 프로젝트 루트를 명령줄 인수로 전달
+
+        # Windows에서 창이 뜨지 않도록 설정
+        startupinfo = None
+        if sys.platform == 'win32':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0  # SW_HIDE
+
         _file_watcher_process = subprocess.Popen(
             [python_exe, str(file_watcher_script), '--project-root', str(project_root)],
             cwd=str(mcp_server_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            startupinfo=startupinfo,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
         )
 
@@ -58,14 +80,26 @@ def start_file_watcher_service():
 
         # 프로세스 시작 대기 및 확인
         import time
-        time.sleep(0.5)
+        time.sleep(1.0)  # 조금 더 기다림
 
         if _file_watcher_process.poll() is not None:
             # 프로세스가 즉시 종료됨 - 에러 발생
+            stdout = _file_watcher_process.stdout.read().decode('utf-8', errors='ignore')
             stderr = _file_watcher_process.stderr.read().decode('utf-8', errors='ignore')
+
             unreal.log_error("=" * 70)
             unreal.log_error("❌ File Watcher Service failed to start!")
-            unreal.log_error(f"   Error: {stderr}")
+
+            if stdout:
+                unreal.log_error("   STDOUT:")
+                for line in stdout.strip().split('\n'):
+                    unreal.log_error(f"      {line}")
+
+            if stderr:
+                unreal.log_error("   STDERR:")
+                for line in stderr.strip().split('\n'):
+                    unreal.log_error(f"      {line}")
+
             unreal.log_error("")
             unreal.log_error("   MANUAL START REQUIRED:")
             unreal.log_error(f"   Run: {project_root / 'MCPServer' / 'scripts' / 'StartFileWatcher.bat'}")
@@ -101,7 +135,11 @@ def start_file_watcher_service():
 
 
 def stop_file_watcher_service():
-    """파일 감시 서비스 중지"""
+    """
+    파일 감시 서비스 중지
+
+    에디터 종료 시 자동으로 호출됩니다 (atexit 등록됨)
+    """
     global _file_watcher_process
 
     if _file_watcher_process is None:
@@ -135,12 +173,16 @@ atexit.register(stop_file_watcher_service)
 
 
 # 파일 감시 서비스 자동 시작
-try:
-    start_file_watcher_service()
-except Exception as e:
-    unreal.log_error(f"Error in init_unreal.py: {e}")
-    import traceback
-    unreal.log_error(traceback.format_exc())
+# NOTE: C++ 플러그인 모듈(NLPPCGModule)에서 이미 시작하므로 여기서는 시작하지 않음
+# 중복 실행 방지를 위해 주석 처리
+# try:
+#     start_file_watcher_service()
+# except Exception as e:
+#     unreal.log_error(f"Error in init_unreal.py: {e}")
+#     import traceback
+#     unreal.log_error(traceback.format_exc())
 
-
+unreal.log("=" * 70)
 unreal.log("UE5 MCP Integration initialized")
+unreal.log("File Watcher Service is managed by NLPPCG C++ Module")
+unreal.log("=" * 70)

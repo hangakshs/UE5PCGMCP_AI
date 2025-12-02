@@ -32,7 +32,9 @@ public class NLPPCG : ModuleRules
 				"JsonUtilities",
 				"Slate",
 				"SlateCore",
-				"UMG"
+				"UMG",
+				"Blutility",
+				"UMGEditor"
 			}
 		);
 

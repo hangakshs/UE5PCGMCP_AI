@@ -28,8 +28,8 @@ void FNLPPCGModule::StartFileWatcherService()
 	// 프로젝트 루트 경로 가져오기
 	FString ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
 
-	// MCPServer 경로 구성
-	FString MCPServerDir = FPaths::Combine(ProjectDir, TEXT("../MCPServer"));
+	// MCPServer 경로 구성 (프로젝트 내부에 위치)
+	FString MCPServerDir = FPaths::Combine(ProjectDir, TEXT("MCPServer"));
 	MCPServerDir = FPaths::ConvertRelativePathToFull(MCPServerDir);
 
 	// Python 스크립트 경로

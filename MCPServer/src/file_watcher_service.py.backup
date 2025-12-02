@@ -1,16 +1,7 @@
 """
 UE5 Forest Generation File Watcher Service
-
 UE5와 파일 기반으로 실시간 통신하는 독립 서비스
-
-역할:
-- UE5가 생성한 명령 파일(ue5_command.json) 감시
-- NLP로 자연어 파싱
-- 응답 파일(mcp_response.json) 생성
-- UE5 에디터와 독립적으로 실행 (백그라운드 프로세스)
-
-사용법:
-python file_watcher_service.py --project-root "프로젝트 경로"
+Cursor MCP와 별개로 동작하며 UE5 에디터가 실행 중일 때만 필요합니다.
 """
 import json
 import time
@@ -20,25 +11,24 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import logging
 
-# Windows 콘솔 UTF-8 인코딩 설정
+# 로깅 설정 - Windows 콘솔 인코딩 문제 해결
 import io
+
+# Windows 콘솔 인코딩 설정
 if sys.platform == 'win32':
+    # Windows 콘솔을 UTF-8로 강제 설정
     if sys.stdout.encoding != 'utf-8':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     if sys.stderr.encoding != 'utf-8':
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# 로그 파일 경로 (프로젝트 Intermediate 폴더에 저장)
+# 로그 파일을 프로젝트 Intermediate 폴더에 저장 (절대 경로)
+# 이렇게 하면 어디서 실행하든 같은 위치에 저장됨
 LOG_DIR = None
 LOG_FILE = None
 
 def setup_logging(project_root: Optional[Path] = None):
-    """
-    로깅 시스템 초기화
-
-    Args:
-        project_root: UE5 프로젝트 루트 경로 (None이면 현재 디렉토리에 저장)
-    """
+    """로깅 설정 (프로젝트 루트를 알아야 정확한 위치에 저장 가능)"""
     global LOG_DIR, LOG_FILE
 
     if project_root:
@@ -123,12 +113,8 @@ class UE5FileWatcherService:
         self.last_processed_hash: Optional[str] = None
         self.is_running = False
 
-        # 마지막 파라미터 저장 파일
-        self.last_parameters_file = self.comm_dir / "last_parameters.json"
-
         logger.info(f"✅ File Watcher initialized")
         logger.info(f"   NLP Handler: {'Available' if self.nlp_handler else 'NOT Available'}")
-        logger.info(f"   Last Parameters File: {self.last_parameters_file}")
 
     def start(self, poll_interval: float = 0.5):
         """
@@ -270,50 +256,15 @@ class UE5FileWatcherService:
 
         try:
             params = self.nlp_handler.parse_forest_command(command)
-            overrides = set(params.pop('_overrides', []))
-
-            # 수정 명령 감지 (변경, 수정, 조정 등)
-            modify_keywords = ['변경', '수정', '조정', '바꿔', '바꾸', 'change', 'modify', 'update']
-            is_modify = any(keyword in command for keyword in modify_keywords)
-
-            if is_modify:
-                # 기존 파라미터 로드
-                last_params = self._load_last_parameters()
-
-                if last_params is None:
-                    logger.warning("⚠️  No existing forest found, treating as create command")
-                    is_modify = False
-                elif not overrides:
-                    logger.warning("⚠️  No overrides detected in modify command, skipping")
-                    return self._create_error_response("수정할 속성이 감지되지 않았습니다. (예: '밀도를 2배로' 같이 변경할 값을 명시해 주세요.)")
-                else:
-                    # 기존 파라미터와 병합
-                    logger.info(f"   📝 Modifying existing forest")
-                    logger.info(f"      Overrides: {overrides}")
-
-                    merged_params = last_params.copy()
-                    for key in overrides:
-                        if key in params:
-                            merged_params[key] = params[key]
-                            logger.info(f"      {key}: {last_params.get(key)} → {params[key]}")
-
-                    params = merged_params
-                    params['action'] = 'modify_forest'
-
-            # 파라미터 저장 (다음 수정을 위해)
-            self._save_last_parameters(params)
 
             logger.info(f"   Parsed parameters:")
-            logger.info(f"      Action: {'modify_forest' if is_modify else 'create_forest'}")
             logger.info(f"      Tree Type: {params.get('tree_type', 'N/A')}")
-            logger.info(f"      Tree Types: {params.get('tree_types', [])}")
             logger.info(f"      Density: {params.get('density', 'N/A')}")
-            logger.info(f"      Density Multiplier: {params.get('density_multiplier', 'N/A')}")
             logger.info(f"      Area Size: {params.get('area_size', 'N/A')} cm²")
-            logger.info(f"      Scale Multiplier: {params.get('scale_multiplier', 'N/A')}")
+            logger.info(f"      Min Distance: {params.get('min_distance', 'N/A')} cm")
 
             return {
-                "action": "modify_forest" if is_modify else "create_forest",
+                "action": "create_forest",
                 "parameters": params,
                 "timestamp": time.time(),
                 "original_command": command
@@ -321,38 +272,7 @@ class UE5FileWatcherService:
 
         except Exception as e:
             logger.error(f"❌ NLP parsing failed: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
             return self._create_error_response(f"명령 파싱 실패: {str(e)}")
-
-    def _load_last_parameters(self) -> Optional[Dict[str, Any]]:
-        """마지막 파라미터 로드"""
-        if not self.last_parameters_file.exists():
-            logger.info("   ℹ️  No last_parameters.json found")
-            return None
-
-        try:
-            with open(self.last_parameters_file, 'r', encoding='utf-8') as f:
-                params = json.load(f)
-            logger.info(f"   ✅ Loaded last parameters from file")
-            return params
-        except Exception as e:
-            logger.error(f"   ❌ Failed to load last parameters: {e}")
-            return None
-
-    def _save_last_parameters(self, params: Dict[str, Any]):
-        """마지막 파라미터 저장"""
-        try:
-            # action 필드 제거 (저장할 필요 없음)
-            params_to_save = params.copy()
-            params_to_save.pop('action', None)
-            params_to_save.pop('_overrides', None)
-
-            with open(self.last_parameters_file, 'w', encoding='utf-8') as f:
-                json.dump(params_to_save, f, indent=2, ensure_ascii=False)
-            logger.info(f"   💾 Saved parameters to last_parameters.json")
-        except Exception as e:
-            logger.error(f"   ❌ Failed to save last parameters: {e}")
 
     def _create_error_response(self, error_message: str) -> Dict[str, Any]:
         """에러 응답 생성"""

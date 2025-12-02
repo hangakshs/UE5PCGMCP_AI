@@ -9,7 +9,9 @@
 #include "MCPClient.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMCPResponse, const FString&, Response);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForestGenerated, const FPCGForestParameters&, Parameters);
+
+// Native Multicast Delegate (non-dynamic) - C++ only, supports complex types
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnForestGenerated, const FPCGForestParameters&);
 
 /**
  * MCP 서버와 통신하는 클라이언트 Actor
@@ -22,6 +24,7 @@ class NLPPCG_API AMCPClient : public AActor
 
 public:
 	AMCPClient();
+	virtual ~AMCPClient();
 
 	/** MCP 서버 URL (예: http://localhost:8000) */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MCP")
@@ -43,8 +46,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "MCP")
 	FOnMCPResponse OnMCPResponse;
 
-	/** 숲 생성 델리게이트 */
-	UPROPERTY(BlueprintAssignable, Category = "MCP")
+	/** 숲 생성 델리게이트 (Native C++ only) */
 	FOnForestGenerated OnForestGenerated;
 
 	/**
@@ -69,7 +71,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+	virtual void PostInitializeComponents() override;
 
 private:
 	void HandleHttpResponse(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
@@ -81,7 +83,13 @@ private:
 	FString GetProjectIntermediatePath() const;
 	void SendCommandViaFile(const FString& Command);
 
-	// 타이머
-	float TimeSinceLastPoll = 0.0f;
+	// Timer 기반 시스템 (Tick 대체)
+	FTSTicker::FDelegateHandle TickerHandle;
+	bool TickerCallback(float DeltaTime);
+	void StartPollingTimer();
+	void StopPollingTimer();
+
+	// 데이터
 	FString LastProcessedCommandHash;
+	bool bIsInitialized = false;  // 중복 초기화 방지
 };

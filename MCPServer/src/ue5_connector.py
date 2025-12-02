@@ -7,6 +7,17 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+# Windows에서 UTF-8 인코딩 설정 (이모지 출력을 위해)
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Python 3.6 이하에서는 reconfigure가 없음
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 class UE5Connector:
     """Unreal Engine 5와 통신하는 커넥터"""
 
@@ -17,8 +28,8 @@ class UE5Connector:
         if project_root is None:
             # 현재 스크립트 위치에서 프로젝트 루트 추론
             current_file = Path(__file__).resolve()
-            # MCPServer/ue5_connector.py -> 프로젝트 루트
-            project_root = current_file.parent.parent
+            # MCPServer/src/ue5_connector.py -> MCPServer/src -> MCPServer -> Portfolio_MCP_PCG
+            project_root = current_file.parent.parent.parent
 
         self.file_comm = FileBasedCommunication(project_root)
 
@@ -46,62 +57,13 @@ class UE5Connector:
 
         # UE5 Python 환경인 경우 직접 실행
         try:
-            import unreal
-
-            # ForestPCGManagerLibrary 블루프린트 라이브러리 가져오기
-            forest_lib = unreal.ForestPCGManagerLibrary
-
-            # 명령 생성
-            command_text = self._params_to_command_text(params)
-
-            # UE5에서 숲 생성 함수 호출
-            world = unreal.EditorLevelLibrary.get_editor_world()
-            success = forest_lib.generate_forest_from_nlp(
-                world_context_object=world,
-                command=command_text,
-                spawn_location=unreal.Vector(0, 0, 0)
-            )
-
-            if success:
-                return {
-                    "success": True,
-                    "message": f"UE5에서 숲 생성 완료: {command_text}",
-                    "parameters": params
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": "UE5에서 숲 생성 실패 - ForestPCGManager를 찾을 수 없습니다.",
-                    "parameters": params
-                }
-
+            return self._execute_direct_in_ue5(params)
         except Exception as e:
             return {
                 "success": False,
                 "error": f"UE5 실행 중 오류: {str(e)}",
                 "parameters": params
             }
-
-    def _params_to_command_text(self, params: Dict[str, Any]) -> str:
-        """파라미터를 자연어 명령으로 변환 (역변환)"""
-        density_map = {
-            'dense': '밀집된',
-            'medium': '보통',
-            'sparse': '성긴'
-        }
-
-        tree_map = {
-            'pine': '소나무',
-            'oak': '참나무',
-            'birch': '자작나무',
-            'maple': '단풍나무',
-            'generic_tree': '나무'
-        }
-
-        density = density_map.get(params.get('density', 'medium'), '보통')
-        tree = tree_map.get(params.get('tree_type', 'generic_tree'), '나무')
-
-        return f"{density} {tree} 숲"
 
     def clear_forest(self) -> Dict[str, Any]:
         """UE5에서 숲 제거"""
@@ -132,6 +94,82 @@ class UE5Connector:
                 "success": False,
                 "error": f"숲 제거 중 오류: {str(e)}"
             }
+
+    def _execute_direct_in_ue5(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """UE5 Python 환경에서 PCG 파라미터를 직접 적용"""
+        import unreal
+
+        forest_lib = unreal.ForestPCGManagerLibrary
+        world = unreal.EditorLevelLibrary.get_editor_world()
+        manager = forest_lib.get_or_create_forest_pcg_manager(
+            world_context_object=world,
+            spawn_location=unreal.Vector(0, 0, 0)
+        )
+
+        if manager is None:
+            return {
+                "success": False,
+                "error": "ForestPCGManager를 찾을 수 없습니다.",
+                "parameters": params
+            }
+
+        forest_params = self._dict_to_pcg_parameters(unreal, params)
+        manager.generate_forest_from_parameters(forest_params)
+
+        applied = self._pcg_parameters_to_dict(forest_params)
+
+        return {
+            "success": True,
+            "message": "UE5에서 PCG 파라미터를 직접 적용했습니다.",
+            "parameters": params,
+            "applied_parameters": applied
+        }
+
+    def _dict_to_pcg_parameters(self, unreal_module, params: Dict[str, Any]):
+        """dict -> unreal.PCGForestParameters 변환"""
+        forest_params = unreal_module.PCGForestParameters()
+
+        forest_params.tree_type = params.get('tree_type', 'generic_tree')
+
+        tree_types = params.get('tree_types') or []
+        if isinstance(tree_types, str):
+            tree_types = [tree_types]
+        forest_params.tree_types = list(tree_types)
+
+        forest_params.density = params.get('density', 'medium')
+        forest_params.size = params.get('size', 'medium')
+
+        forest_params.area_size = self._get_float(params, 'area_size', 1000000.0)
+        forest_params.min_distance = self._get_float(params, 'min_distance', 200.0)
+        forest_params.max_distance = self._get_float(params, 'max_distance', 500.0)
+        forest_params.randomness = self._get_float(params, 'randomness', 0.5)
+        forest_params.scale_multiplier = self._get_float(params, 'scale_multiplier', 1.0)
+        forest_params.density_multiplier = self._get_float(params, 'density_multiplier', 1.0)
+
+        return forest_params
+
+    def _pcg_parameters_to_dict(self, forest_params) -> Dict[str, Any]:
+        """unreal.PCGForestParameters -> dict 변환"""
+        return {
+            "tree_type": forest_params.tree_type,
+            "tree_types": list(forest_params.tree_types),
+            "density": forest_params.density,
+            "size": forest_params.size,
+            "area_size": forest_params.area_size,
+            "min_distance": forest_params.min_distance,
+            "max_distance": forest_params.max_distance,
+            "randomness": forest_params.randomness,
+            "scale_multiplier": forest_params.scale_multiplier,
+            "density_multiplier": forest_params.density_multiplier
+        }
+
+    def _get_float(self, params: Dict[str, Any], key: str, default: float) -> float:
+        """dict value를 안전하게 float로 변환"""
+        value = params.get(key, default)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
 
 # 파일 기반 통신 (UE5 에디터 외부에서 사용)
@@ -181,10 +219,11 @@ class FileBasedCommunication:
 
             with open(response_file, 'w', encoding='utf-8') as f:
                 json.dump(command_data, f, indent=2, ensure_ascii=False)
+            print(f"DEBUG: Response file written to: {response_file}")
 
             return {
                 "success": True,
-                "message": f"✅ 명령이 UE5로 전송되었습니다.",
+                "message": f"[성공] 명령이 UE5로 전송되었습니다.",
                 "file": str(response_file),
                 "action": command_data.get("action", "unknown")
             }

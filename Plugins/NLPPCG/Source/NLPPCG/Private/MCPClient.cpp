@@ -8,15 +8,32 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformFileManager.h"
+#include "Containers/Ticker.h"
+#include "EngineUtils.h"
+#include "ForestPCGManager.h"
 
 AMCPClient::AMCPClient()
 {
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.TickInterval = 0.05f;  // 50ms마다 Tick (더 빠른 응답)
+	// Tick을 비활성화 - FTSTicker 사용으로 전환
+	PrimaryActorTick.bCanEverTick = false;
+}
+
+AMCPClient::~AMCPClient()
+{
+	// 타이머 정리
+	StopPollingTimer();
 }
 
 void AMCPClient::Initialize()
 {
+	// 중복 초기화 방지
+	if (bIsInitialized)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("   ⚠️  Already initialized, skipping..."));
+		return;
+	}
+	bIsInitialized = true;
+
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
 	UE_LOG(LogTemp, Warning, TEXT("🔧 MCPClient::Initialize() called"));
 	UE_LOG(LogTemp, Warning, TEXT("========================================"));
@@ -24,7 +41,7 @@ void AMCPClient::Initialize()
 	UE_LOG(LogTemp, Warning, TEXT("   bUseFileCommunication: %s"), bUseFileCommunication ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Warning, TEXT("   bDebugMode: %s"), bDebugMode ? TEXT("TRUE") : TEXT("FALSE"));
 	UE_LOG(LogTemp, Warning, TEXT("   FilePollingInterval: %.2f seconds"), FilePollingInterval);
-	UE_LOG(LogTemp, Warning, TEXT("   bCanEverTick: %s"), PrimaryActorTick.bCanEverTick ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Warning, TEXT("   ✅ Using FTSTicker-based polling (Editor-safe)"));
 
 	if (bUseFileCommunication)
 	{
@@ -82,8 +99,11 @@ void AMCPClient::Initialize()
 		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 		UE_LOG(LogTemp, Warning, TEXT("   Command Dir: %s"), *CommandDir);
 		UE_LOG(LogTemp, Warning, TEXT("   File Watcher: Should be auto-started via Python"));
-		UE_LOG(LogTemp, Warning, TEXT("   Tick Interval: %.2f seconds"), FilePollingInterval);
+		UE_LOG(LogTemp, Warning, TEXT("   Polling Interval: %.2f seconds"), FilePollingInterval);
 		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+
+		// FTSTicker 폴링 시작
+		StartPollingTimer();
 	}
 	else
 	{
@@ -101,43 +121,18 @@ void AMCPClient::BeginPlay()
 	Initialize();
 }
 
-void AMCPClient::Tick(float DeltaTime)
+void AMCPClient::PostInitializeComponents()
 {
-	Super::Tick(DeltaTime);
+	Super::PostInitializeComponents();
 
-	// 첫 Tick 로그 (한 번만)
-	static bool bFirstTick = true;
-	if (bFirstTick)
+	// 에디터 환경에서 자동 초기화
+	#if WITH_EDITOR
+	if (!bIsInitialized)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("🔄 MCPClient::Tick() - First tick called!"));
-		UE_LOG(LogTemp, Warning, TEXT("   bUseFileCommunication: %s"), bUseFileCommunication ? TEXT("TRUE") : TEXT("FALSE"));
-		UE_LOG(LogTemp, Warning, TEXT("   FilePollingInterval: %.2f seconds"), FilePollingInterval);
-		bFirstTick = false;
+		UE_LOG(LogTemp, Warning, TEXT("🔧 PostInitializeComponents() - Auto-initializing in Editor mode"));
+		Initialize();
 	}
-
-	if (!bUseFileCommunication)
-	{
-		return;
-	}
-
-	TimeSinceLastPoll += DeltaTime;
-
-	if (TimeSinceLastPoll >= FilePollingInterval)
-	{
-		TimeSinceLastPoll = 0.0f;
-
-		// 10초마다 한 번씩 Tick 실행 로그
-		static double LastTickLogTime = 0.0;
-		double CurrentTime = FPlatformTime::Seconds();
-
-		if ((CurrentTime - LastTickLogTime) > 10.0)
-		{
-			LastTickLogTime = CurrentTime;
-			UE_LOG(LogTemp, Log, TEXT("🔄 MCPClient::Tick() - Polling for response file..."));
-		}
-
-		CheckCommandFile();
-	}
+	#endif
 }
 
 void AMCPClient::SendCommand(const FString& Command)
@@ -277,8 +272,9 @@ void AMCPClient::ProcessForestCommand(const FString& JsonResponse)
 		FString Action = CommandObject->GetStringField(TEXT("action"));
 		UE_LOG(LogTemp, Warning, TEXT("   Action: %s"), *Action);
 
-		if (Action == TEXT("create_forest"))
+	if (Action == TEXT("create_forest") || Action == TEXT("modify_forest"))
 		{
+		const bool bIsModify = (Action == TEXT("modify_forest"));
 			TSharedPtr<FJsonObject> ParamsObject = CommandObject->GetObjectField(TEXT("parameters"));
 			FPCGForestParameters Params = ParseForestParameters(ParamsObject);
 
@@ -287,12 +283,54 @@ void AMCPClient::ProcessForestCommand(const FString& JsonResponse)
 			UE_LOG(LogTemp, Warning, TEXT("      Density: %s"), *Params.Density);
 			UE_LOG(LogTemp, Warning, TEXT("      Area Size: %.1f cm²"), Params.AreaSize);
 			UE_LOG(LogTemp, Warning, TEXT("      Min Distance: %.1f cm"), Params.MinDistance);
-			UE_LOG(LogTemp, Warning, TEXT("   Broadcasting to ForestPCGManager..."));
 
-			// 델리게이트 호출
-			OnForestGenerated.Broadcast(Params);
+			// 델리게이트 바인딩 개수 확인
+			int32 BindingCount = OnForestGenerated.IsBound() ? 1 : 0;
+			UE_LOG(LogTemp, Warning, TEXT("   OnForestGenerated delegate bound count: %d"), BindingCount);
+			UE_LOG(LogTemp, Warning, TEXT("   OnForestGenerated IsBound: %s"), OnForestGenerated.IsBound() ? TEXT("YES") : TEXT("NO"));
 
-			UE_LOG(LogTemp, Warning, TEXT("✅ Forest generation command broadcasted"));
+			auto GenerateDirectly = [&]()
+			{
+				UE_LOG(LogTemp, Error, TEXT(">>> WORKAROUND: Finding ForestPCGManager directly..."));
+
+				UWorld* World = GetWorld();
+				if (World)
+				{
+					for (TActorIterator<AForestPCGManager> It(World); It; ++It)
+					{
+						AForestPCGManager* Manager = *It;
+						if (Manager)
+						{
+							UE_LOG(LogTemp, Error, TEXT(">>> Found ForestPCGManager: %s <<<"), *Manager->GetName());
+							UE_LOG(LogTemp, Error, TEXT(">>> Calling GenerateForestFromParameters DIRECTLY <<<"));
+							Manager->GenerateForestFromParameters(Params);
+							UE_LOG(LogTemp, Error, TEXT(">>> Direct call completed <<<"));
+							break;
+						}
+					}
+				}
+			};
+
+			if (!OnForestGenerated.IsBound())
+			{
+				UE_LOG(LogTemp, Error, TEXT("❌ CRITICAL: No listeners bound to OnForestGenerated!"));
+				UE_LOG(LogTemp, Error, TEXT("   Make sure ForestPCGManager is in the level and has bound the delegate!"));
+				GenerateDirectly();
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("   Broadcasting to ForestPCGManager..."));
+				UE_LOG(LogTemp, Warning, TEXT("   Parameters being sent (%s):"), bIsModify ? TEXT("modify") : TEXT("create"));
+				UE_LOG(LogTemp, Warning, TEXT("      - TreeType: '%s'"), *Params.TreeType);
+				UE_LOG(LogTemp, Warning, TEXT("      - Density: '%s'"), *Params.Density);
+				UE_LOG(LogTemp, Warning, TEXT("      - AreaSize: %.1f"), Params.AreaSize);
+
+				// 델리게이트 호출
+				UE_LOG(LogTemp, Error, TEXT(">>> ABOUT TO CALL OnForestGenerated.Broadcast() <<<"));
+				OnForestGenerated.Broadcast(Params);
+				UE_LOG(LogTemp, Error, TEXT(">>> OnForestGenerated.Broadcast() RETURNED <<<"));
+				UE_LOG(LogTemp, Warning, TEXT("✅ Forest generation command broadcasted"));
+			}
 		}
 		else if (Action == TEXT("clear_forest"))
 		{
@@ -333,6 +371,31 @@ FPCGForestParameters AMCPClient::ParseForestParameters(TSharedPtr<FJsonObject> P
 	Params.MaxDistance = ParamsObject->GetNumberField(TEXT("max_distance"));
 	Params.Randomness = ParamsObject->GetNumberField(TEXT("randomness"));
 	Params.ScaleMultiplier = ParamsObject->GetNumberField(TEXT("scale_multiplier"));
+
+	// 밀도 배율 파싱 (선택적 필드)
+	if (ParamsObject->HasField(TEXT("density_multiplier")))
+	{
+		Params.DensityMultiplier = ParamsObject->GetNumberField(TEXT("density_multiplier"));
+	}
+
+	// 여러 나무 타입 파싱 (tree_types 배열)
+	if (ParamsObject->HasField(TEXT("tree_types")))
+	{
+		const TArray<TSharedPtr<FJsonValue>>* TreeTypesArray;
+		if (ParamsObject->TryGetArrayField(TEXT("tree_types"), TreeTypesArray))
+		{
+			Params.TreeTypes.Empty();
+			for (const TSharedPtr<FJsonValue>& Value : *TreeTypesArray)
+			{
+				FString TreeTypeStr;
+				if (Value->TryGetString(TreeTypeStr))
+				{
+					Params.TreeTypes.Add(TreeTypeStr);
+				}
+			}
+			UE_LOG(LogTemp, Warning, TEXT("   Parsed %d tree types for mixed forest"), Params.TreeTypes.Num());
+		}
+	}
 
 	return Params;
 }
@@ -377,11 +440,12 @@ void AMCPClient::SendCommandViaFile(const FString& Command)
 
 	UE_LOG(LogTemp, Log, TEXT("   JSON Content: %s"), *JsonString);
 
-	// 파일 저장
-	if (FFileHelper::SaveStringToFile(JsonString, *CommandFilePath))
+	// 파일 저장 - UTF-8 인코딩 명시적 사용 (Python 호환성)
+	if (FFileHelper::SaveStringToFile(JsonString, *CommandFilePath, FFileHelper::EEncodingOptions::ForceUTF8))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("✅ Command file created successfully!"));
 		UE_LOG(LogTemp, Warning, TEXT("   File size: %d bytes"), JsonString.Len());
+		UE_LOG(LogTemp, Warning, TEXT("   Encoding: UTF-8 (for Python compatibility)"));
 		UE_LOG(LogTemp, Warning, TEXT("   Waiting for File Watcher Service to process..."));
 		UE_LOG(LogTemp, Warning, TEXT("========================================"));
 
@@ -393,6 +457,64 @@ void AMCPClient::SendCommandViaFile(const FString& Command)
 		UE_LOG(LogTemp, Error, TEXT("========================================"));
 		OnMCPResponse.Broadcast(TEXT("❌ 명령 파일 저장 실패"));
 	}
+}
+
+void AMCPClient::StartPollingTimer()
+{
+	// 기존 타이머가 있다면 제거
+	StopPollingTimer();
+
+	UE_LOG(LogTemp, Warning, TEXT("⏰ Starting FTSTicker polling timer..."));
+	UE_LOG(LogTemp, Warning, TEXT("   Interval: %.2f seconds"), FilePollingInterval);
+
+	// FTSTicker 등록 - FilePollingInterval마다 TickerCallback 호출
+	TickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+		FTickerDelegate::CreateUObject(this, &AMCPClient::TickerCallback),
+		FilePollingInterval
+	);
+
+	if (TickerHandle.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("✅ FTSTicker polling timer started successfully!"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("❌ Failed to start FTSTicker polling timer!"));
+	}
+}
+
+void AMCPClient::StopPollingTimer()
+{
+	if (TickerHandle.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("🛑 Stopping FTSTicker polling timer..."));
+		FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+		TickerHandle.Reset();
+		UE_LOG(LogTemp, Warning, TEXT("✅ Polling timer stopped"));
+	}
+}
+
+bool AMCPClient::TickerCallback(float DeltaTime)
+{
+	// 첫 Ticker 콜백 로그 (한 번만)
+	static bool bFirstCallback = true;
+	if (bFirstCallback)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("🔄 FTSTicker::TickerCallback() - First callback!"));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		UE_LOG(LogTemp, Warning, TEXT("   This confirms timer is working in Editor"));
+		UE_LOG(LogTemp, Warning, TEXT("   DeltaTime: %.3f seconds"), DeltaTime);
+		UE_LOG(LogTemp, Warning, TEXT("   Polling for response files..."));
+		UE_LOG(LogTemp, Warning, TEXT("========================================"));
+		bFirstCallback = false;
+	}
+
+	// 파일 체크 실행
+	CheckCommandFile();
+
+	// true를 반환하면 타이머 계속 실행
+	return true;
 }
 
 void AMCPClient::CheckCommandFile()
